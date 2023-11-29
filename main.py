@@ -10,6 +10,22 @@ import BweDRL
 #import ExpDrl
 import onnxruntime as ort
 
+# incomplete
+def evaluatePolicy(modelFileName):
+    # export as ONNX
+    algo = d3rlpy.load_learnable(modelFileName, device="cpu:0")
+    algo.save_policy("policy.onnx")
+
+    # load ONNX policy via onnxruntime
+    ort_session = ort.InferenceSession('policy.onnx', providers=["CPUExecutionProvider"])
+
+    # to obtain observations from the dataset or environment (TODO)
+    observation = []
+    # returns greedy action
+    action = ort_session.run(None, {'input_0': observation})
+    print(action)
+    assert action[0].shape == (1, 1)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -40,6 +56,8 @@ def main() -> None:
         bwe.train_model()
     else:
         print("Please provide a configuration file with a valid algorithm name!\n")
+
+
 
 
 if __name__ == "__main__":
