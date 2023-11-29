@@ -1,9 +1,7 @@
 FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
 
-# this needs to avoid time zone question
 ENV DEBIAN_FRONTEND=noninteractive
 
-# install dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
@@ -35,7 +33,6 @@ RUN git clone --depth=1 https://github.com/pyenv/pyenv.git .pyenv
 ENV PYENV_ROOT="/root/.pyenv"
 ENV PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 
-# INSTALL OK PYTHON WITH PYENV
 RUN apt-get update && apt-get install -y libbz2-dev libncurses5 libncurses5-dev libncursesw5 tk-dev libreadline-dev libsqlite3-dev python3-testresources swig
 RUN pyenv install ${PYTHON_VERSION} && pyenv global ${PYTHON_VERSION}
 
@@ -50,6 +47,9 @@ RUN pip install --no-cache-dir \
     pip install --no-cache-dir . && \
     cd .. && \
     rm -rf d3rlpy-master master.zip
+
+# for some reason it messes with pytorch and cuda versions so force pytorch 2.0.1 with cu117
+RUN pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
 
 EXPOSE 6006
 
