@@ -1,0 +1,23 @@
+
+{
+  "algorithmName":"DT",
+  "trainDataFolder": "data",
+  "testDataFolder": "edata",
+  "logFolderName": "DT",
+  "outputModelName": "dtmodel",
+  "rewardFuncName": "reward_r3net",
+  "device": "cpu:0",
+  "gamma": 0.99,
+  "context_size": 20,
+  "max_timestep": 1000,
+  "batch_size": 64,
+  "learning_rate": 0.0001,
+  "num_heads": 1,
+  "num_layers": 3,
+  "attn_dropout": 0.1,
+  "resid_dropout": 0.1,
+  "embed_dropout": 0.1,
+  "activation_type": "relu",
+  "warmup_steps": 10000,
+  "clip_grad_norm": 0.25
+}

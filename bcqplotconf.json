@@ -1,0 +1,8 @@
+{"metric_plots":[
+  { "metric":"actor_loss",     "plot_title":"Actor loss",    "include":1 },
+  { "metric":"imitator_loss",     "plot_title":"Imitator loss",    "include":1 },
+  { "metric":"critic_loss",    "plot_title":"Critic loss",   "include":1 },
+  { "metric":"time_algorithm_update",     "plot_title":"Time algorithm update",    "include":0 },
+  { "metric":"time_sample_batch",         "plot_title":"Time sample batch",        "include":0 },
+  { "metric":"time_step",      "plot_title":"Time step",     "include":0 }
+]}

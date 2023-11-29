@@ -1,0 +1,12 @@
+
+{"metric_plots":[
+  { "metric":"actor_loss",     "plot_title":"Actor loss",    "include":0 },
+  { "metric":"alpha",          "plot_title":"Alpha",         "include":0 },
+  { "metric":"alpha_loss",     "plot_title":"Alpha loss",    "include":1 },
+  { "metric":"critic_loss",    "plot_title":"Critic loss",   "include":1 },
+  { "metric":"temp",           "plot_title":"Temp",          "include":1 },
+  { "metric":"temp_loss",      "plot_title":"Temp loss",     "include":0 },
+  { "metric":"time_algorithm_update",     "plot_title":"Time algorithm update",    "include":1 },
+  { "metric":"time_sample_batch",         "plot_title":"Time sample batch",        "include":0 },
+  { "metric":"time_step",      "plot_title":"Time step",     "include":0 }
+]}

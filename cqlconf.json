@@ -1,0 +1,23 @@
+
+{
+  "algorithmName":"CQL",
+  "trainDataFolder": "data",
+  "testDataFolder": "edata",
+  "rewardFuncName": "reward_r3net",
+  "outputModelName": "cqlmodel",
+  "logFolderName": "CQL",
+  "initial_alpha": 1.0,
+  "gamma": 0.99,
+  "alpha_threshold": 10.0,
+  "conservative_weight": 5.0,
+  "n_action_samples": 10,
+  "n_critics": 2,
+  "initial_temperature": 1.0,
+  "tau": 0.005,
+  "batch_size": 256,
+  "actor_learning_rate": 0.0001,
+  "critic_learning_rate": 0.0003,
+  "temp_learning_rate": 0.0001,
+  "alpha_learning_rate": 0.0001,
+  "device": "cpu:0"
+}
