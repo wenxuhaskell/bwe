@@ -14,8 +14,6 @@ def load_data(datafile):
         # to make it as type of float32
         # this is required for creating continuous actions space
         bwe_data = bwe_data + 0.01
-
         ob_data = np.array(d['observations'])
-
         # return states and actions
         return ob_data, bwe_data
