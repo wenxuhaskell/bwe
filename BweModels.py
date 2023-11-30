@@ -34,7 +34,8 @@ class BweDrl:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
-        datafiles = train_data_files[0:10]
+#        datafiles = train_data_files[0:10]
+        datafiles = train_data_files
         for filename in datafiles:
             # load the log file and prepare the dataset
             observations, actions = load_data(filename)
