@@ -2,7 +2,7 @@
 {
   "algorithmName":"BCQ",
   "trainDataFolder": "data",
-  "testDataFolder": "edata",
+  "testDataFolder": "testdata",
   "logFolderName": "BCQ",
   "outputModelName": "bcqmodel",
   "rewardFuncName": "reward_r3net",

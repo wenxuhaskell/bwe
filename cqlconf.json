@@ -2,7 +2,7 @@
 {
   "algorithmName":"CQL",
   "trainDataFolder": "data",
-  "testDataFolder": "edata",
+  "testDataFolder": "testdata",
   "rewardFuncName": "reward_r3net",
   "outputModelName": "cqlmodel",
   "logFolderName": "CQL",

@@ -13,22 +13,6 @@ import BweReward
 import BweUtils
 import BweLogger
 
-# incomplete
-def evaluatePolicy(modelFileName):
-    # export as ONNX
-    algo = d3rlpy.load_learnable(modelFileName, device="cpu:0")
-    algo.save_policy("policy.onnx")
-
-    # load ONNX policy via onnxruntime
-    ort_session = ort.InferenceSession('policy.onnx', providers=["CPUExecutionProvider"])
-
-    # to obtain observations from the dataset or environment (TODO)
-    observation = []
-    # returns greedy action
-    action = ort_session.run(None, {'input_0': observation})
-    print(action)
-    assert action[0].shape == (1, 1)
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--conf", type=str, default="cqlconf.json")
@@ -55,5 +39,6 @@ def main() -> None:
     bwe = BweModels.BweDrl(params, algo)
     bwe.train_model()
 
+    bwe.evaluate_model_offline()
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@
 {
   "algorithmName":"DT",
   "trainDataFolder": "data",
-  "testDataFolder": "edata",
+  "testDataFolder": "testdata",
   "logFolderName": "DT",
   "outputModelName": "dtmodel",
   "rewardFuncName": "reward_r3net",

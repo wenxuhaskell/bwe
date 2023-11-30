@@ -4,7 +4,6 @@ import numpy as np
 
 import os
 import BweReward
-import BweEnv
 from BweUtils import load_data
 from BweLogger import BweAdapter, BweAdapterFactory
 import onnxruntime as ort
@@ -22,8 +21,7 @@ class BweDrl:
 
     def train_model (self):
         # load the list of log files under the given directory
-        # iterate over files in
-        # that directory
+        # iterate over files in that directory
         files = sorted(os.listdir(self._train_data_dir))
         train_data_files = []
         for name in files:
@@ -34,9 +32,8 @@ class BweDrl:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
-#        datafiles = train_data_files[0:10]
-        datafiles = train_data_files
-        for filename in datafiles:
+        train_data_files = train_data_files[0:10]
+        for filename in train_data_files:
             # load the log file and prepare the dataset
             observations, actions = load_data(filename)
             # terminal flags
@@ -58,6 +55,8 @@ class BweDrl:
             exp_filename = filename.split('/')[1].split('.')[0]
             n_steps = len(observations)
             n_steps_per_epoch = n_steps
+            n_steps = 10
+            n_steps_per_epoch = 10
             # offline training
             self._algo.fit(
                 dataset,
@@ -66,17 +65,22 @@ class BweDrl:
                 experiment_name=exp_filename,
                 with_timestamp=False,
                 logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-                #        evaluators={
-                #            'environment': d3rlpy.metrics.EnvironmentEvaluator(bwe_env),
-                #        },
             )
 
         #
-        print("Training of " + str(len(datafiles)) + " episodes!\n")
-        print("The latest trained model is placed under the log folder" + self._log_dir)
+        print("Training of " + str(len(train_data_files)) + " episodes!\n")
+        print("The latest trained model is placed under the log folder " + self._log_dir)
+        policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+        self._algo.save_policy(policy_file_name)
+        print("The exported policy file is " + policy_file_name)
+
+    def export_policy (self):
+        if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
+            output_model_full_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+            self._algo.save_policy(output_model_full_name)
+            print("The model is exported as " + output_model_full_name)
 
     def evaluate_model_offline (self):
-
         # setup algorithm manually
         # if there is already a pre-trained model, load it
         if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
@@ -88,34 +92,46 @@ class BweDrl:
             return
 
         # to be used for online learning (or evaluation)
-        bwe_env = BweEnv(observations, actions)
-        _ = bwe_env.reset()
+        files = sorted(os.listdir(self._test_data_dir))
+        test_data_files = []
+        for name in files:
+            f = os.path.join(self._train_data_dir, name)
+            # checking if it is a file
+            if os.path.isfile(f):
+                test_data_files.append(f)
 
+#        test_data_files = test_data_files[0:10]
         # predict
-        observation, _ = bwe_env.reset()
-        while True:
-            # Add batch dimension
-            # observation = observation.reshape((1, len(observation)))
-            # tt = np.expand_dims(observation, axis=0)
-            tt = observation.reshape(1, len(observation))
-            action = algo.predict(tt)[0]
-            observation, reward, done, truncated, _ = bwe_env.step(action)
-            if done:
-                break
+        for file in test_data_files:
+            observations, actions = load_data(file)
+            predictions_diff = []
+            for observation, action in zip(observations, actions):
+                # Add batch dimension
+                # observation = observation.reshape((1, len(observation)))
+                # tt = np.expand_dims(observation, axis=0)
+                observation = observation.reshape(1, len(observation))
+                prediction = algo.predict(observation)[0]
+                value = prediction - action
+                filename = file.split('/')[1].split('.')[0]
+                predictions_diff.append(f"{filename},{value[0]}\n")
 
-        # export as ONNX
-        cql_new.save_policy("policy.onnx")
+            # logging the difference of predictions to logfile preddiff.csv
+            path = os.path.join(self._log_dir, f"preddiff.csv")
+            with open(path, "a") as f:
+                f.writelines(predictions_diff)
+                f.close()
 
+    # INCOMPLETE
+    def evaluatePolicy(self, policyFileName):
         # load ONNX policy via onnxruntime
-        ort_session = ort.InferenceSession('policy.onnx', providers=["CPUExecutionProvider"])
+        ort_session = ort.InferenceSession(policyFileName, providers=["CPUExecutionProvider"])
 
-        # observation
-        observation, _ = bwe_env.reset()
-        observation = observation.reshape((1, len(observation))).astype(np.float32)
+        # to obtain observations from the dataset or environment (TODO)
+        observation = []
         # returns greedy action
         action = ort_session.run(None, {'input_0': observation})
         print(action)
-        assert action[0].shape == (1, 1)
+
 
 
 def createCQL(params):
