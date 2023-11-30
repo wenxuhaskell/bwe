@@ -10,6 +10,10 @@ import BweDRL
 #import ExpDrl
 import onnxruntime as ort
 
+import BweReward
+import BweUtils
+import BweLogger
+
 # incomplete
 def evaluatePolicy(modelFileName):
     # export as ONNX
@@ -25,7 +29,6 @@ def evaluatePolicy(modelFileName):
     action = ort_session.run(None, {'input_0': observation})
     print(action)
     assert action[0].shape == (1, 1)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -56,8 +59,6 @@ def main() -> None:
         bwe.train_model()
     else:
         print("Please provide a configuration file with a valid algorithm name!\n")
-
-
 
 
 if __name__ == "__main__":

@@ -51,8 +51,8 @@ class BweCQL:
         # load the log file and prepare the dataset
         observations, actions = load_data(log_filename)
         # terminal flags
-        terminals = np.zeros(len(actions))
-        terminals[-1] = 1
+        terminals = np.random.randint(2, size=len(actions))
+        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -167,8 +167,8 @@ class BweSAC:
         # load the log file and prepare the dataset
         observations, actions = load_data(log_filename)
         # terminal flags
-        terminals = np.zeros(len(actions))
-        terminals[-1] = 1
+        terminals = np.random.randint(2, size=len(actions))
+        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -203,8 +203,8 @@ class BweSAC:
         # offline training
         sac.fit(
             dataset,
-            10,
-            10,
+            n_steps,
+            n_steps_per_epoch,
             experiment_name=log_filename,
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
@@ -257,8 +257,8 @@ class BweBCQ:
         # load the log file and prepare the dataset
         observations, actions = load_data(log_filename)
         # terminal flags
-        terminals = np.zeros(len(actions))
-        terminals[-1] = 1
+        terminals = np.random.randint(2, size=len(actions))
+        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -298,8 +298,8 @@ class BweBCQ:
         # offline training
         bcq.fit(
             dataset,
-            10,
-            10,
+            n_steps,
+            n_steps_per_epoch,
             experiment_name=log_filename,
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
@@ -377,8 +377,8 @@ class BweDT:
         print(observations.shape)
         print(actions.shape)
         # terminal flags
-        terminals = np.zeros(len(actions))
-        terminals[-1] = 1
+        terminals = np.random.randint(2, size=len(actions))
+#        terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -406,8 +406,8 @@ class BweDT:
         # offline training
         dt.fit(
             dataset,
-            10000,
-            1000,
+            n_steps,
+            n_steps_per_epoch,
             experiment_name=log_filename,
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
