@@ -215,6 +215,30 @@ class BweSAC:
         success = True
         return success
 
+    def train_model (self):
+        # load the list of log files under the given directory
+        # iterate over files in
+        # that directory
+        files = sorted(os.listdir(self._train_data_dir))
+        train_data_files = []
+        for name in files:
+            f = os.path.join(self._train_data_dir, name)
+            # checking if it is a file
+            if os.path.isfile(f):
+                train_data_files.append(f)
+        # Initially there is no pre-trained model
+        start_date = datetime.now().strftime("%Y%m%d%H%M%S")
+        self._log_dir = self._log_dir_pre + "_" + start_date
+        datafiles = train_data_files[0:10]
+        for file in datafiles:
+            success = self.train_episode(file)
+            if success == False:
+                break
+        #
+        print("Training of " + str(len(datafiles)) + " episodes!\n")
+        print("The latest trained model is placed under the log folder")
+        return success
+
 class BweBCQ:
     def __init__(self, params, ):
         self._output_model_name = params['outputModelName']
