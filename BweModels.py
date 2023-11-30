@@ -60,8 +60,8 @@ class BweDrl:
             # offline training
             self._algo.fit(
                 dataset,
-                10,
-                10,
+                n_steps,
+                n_steps_per_epoch,
                 experiment_name=exp_filename,
                 with_timestamp=False,
                 logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
@@ -80,7 +80,7 @@ class BweDrl:
         # if there is already a pre-trained model, load it
         if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.d3'
-            cql_new = d3rlpy.load_learnable(output_model_full_name, device=self._device)
+            algo = d3rlpy.load_learnable(output_model_full_name, device=self._device)
             print("Load the pre-trained model from the file" + output_model_full_name + " for evaluation with emulated data!")
         else:
             print("There is no pre-trained model for evaluation!\n")
@@ -97,7 +97,7 @@ class BweDrl:
             # observation = observation.reshape((1, len(observation)))
             # tt = np.expand_dims(observation, axis=0)
             tt = observation.reshape(1, len(observation))
-            action = cql_new.predict(tt)[0]
+            action = algo.predict(tt)[0]
             observation, reward, done, truncated, _ = bwe_env.step(action)
             if done:
                 break
