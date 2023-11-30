@@ -32,7 +32,7 @@ class BweDrl:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
-        train_data_files = train_data_files[0:10]
+#        train_data_files = train_data_files[0:10]
         for filename in train_data_files:
             # load the log file and prepare the dataset
             observations, actions = load_data(filename)
@@ -55,8 +55,8 @@ class BweDrl:
             exp_filename = filename.split('/')[1].split('.')[0]
             n_steps = len(observations)
             n_steps_per_epoch = n_steps
-            n_steps = 10
-            n_steps_per_epoch = 10
+#            n_steps = 10
+#            n_steps_per_epoch = 10
             # offline training
             self._algo.fit(
                 dataset,
