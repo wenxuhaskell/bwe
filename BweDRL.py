@@ -52,7 +52,6 @@ class BweCQL:
         observations, actions = load_data(log_filename)
         # terminal flags
         terminals = np.random.randint(2, size=len(actions))
-        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -168,7 +167,6 @@ class BweSAC:
         observations, actions = load_data(log_filename)
         # terminal flags
         terminals = np.random.randint(2, size=len(actions))
-        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -229,7 +227,7 @@ class BweSAC:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-        datafiles = train_data_files[0:10]
+#       datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:
@@ -282,7 +280,6 @@ class BweBCQ:
         observations, actions = load_data(log_filename)
         # terminal flags
         terminals = np.random.randint(2, size=len(actions))
-        #terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -348,7 +345,7 @@ class BweBCQ:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-        datafiles = train_data_files[0:10]
+#        datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:
@@ -402,7 +399,6 @@ class BweDT:
         print(actions.shape)
         # terminal flags
         terminals = np.random.randint(2, size=len(actions))
-#        terminals[-1] = 1
         # calculate reward
         rewards = np.zeros(len(observations))
         for i, o in enumerate(list(observations)):
@@ -457,7 +453,7 @@ class BweDT:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-        datafiles = train_data_files[0:10]
+#        datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:
