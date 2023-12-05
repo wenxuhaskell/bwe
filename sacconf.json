@@ -1,11 +1,12 @@
 
 {
   "algorithmName":"SAC",
+  "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "edata",
   "logFolderName": "SAC",
   "outputModelName": "sacmodel",
-  "rewardFuncName": "reward_r3net",
+  "rewardFuncName": "QOE_V1",
   "gamma": 0.99,
   "n_critics": 2,
   "initial_temperature": 1.0,

@@ -1,11 +1,12 @@
 
 {
   "algorithmName":"DT",
+  "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "testdata",
   "logFolderName": "DT",
   "outputModelName": "dtmodel",
-  "rewardFuncName": "reward_r3net",
+  "rewardFuncName": "QOE_V1",
   "device": "cpu:0",
   "gamma": 0.99,
   "context_size": 20,

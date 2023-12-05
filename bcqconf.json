@@ -1,11 +1,12 @@
 
 {
   "algorithmName":"BCQ",
+  "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "testdata",
   "logFolderName": "BCQ",
   "outputModelName": "bcqmodel",
-  "rewardFuncName": "reward_r3net",
+  "rewardFuncName": "QOE_V1",
   "update_actor_interval": 2,
   "n_action_samples": 100,
   "n_critics": 2,

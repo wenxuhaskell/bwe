@@ -1,9 +1,10 @@
 
 {
   "algorithmName":"CQL",
+  "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "testdata",
-  "rewardFuncName": "reward_r3net",
+  "rewardFuncName": "QOE_V1",
   "outputModelName": "cqlmodel",
   "logFolderName": "CQL",
   "initial_alpha": 1.0,
