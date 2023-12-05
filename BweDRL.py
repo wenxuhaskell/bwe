@@ -8,6 +8,11 @@ from BweUtils import load_data
 from BweLogger import BweAdapter, BweAdapterFactory
 import onnxruntime as ort
 
+# TODO: this modules seems to be useless
+# the right way is to make a single abstract class and inherit main methods from it. Configure only hyperparameters in the child classes
+# I think you've already done this in BweModels module (Nikita)
+
+
 class BweCQL:
     def __init__(self, params):
         self._output_model_name = params['outputModelName']
@@ -34,17 +39,16 @@ class BweCQL:
         # for storing output models and metrics
         self._log_dir = self._log_dir_pre
 
-
     # arguments:
     #  log_filename - fullname including path of training data file
     # return:
     #  success: True/False
-    def train_episode (self, log_filename = ''):
+    def train_episode(self, log_filename=''):
         # flag for successful/unsuccessful traning of one episode
         success = False
 
         # if the log_filename is not given
-        if(log_filename == ''):
+        if log_filename == '':
             print("train_episode() - Please provide a valid log filename! \n")
             return ('', success)
 
@@ -70,19 +74,21 @@ class BweCQL:
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.d3'
             cql = d3rlpy.load_learnable(output_model_full_name, device=self._device)
         else:
-            cql = d3rlpy.algos.CQLConfig(batch_size=self._batch_size,
-                                         gamma=self._gamma,
-                                         actor_learning_rate=self._actor_learning_rate,
-                                         critic_learning_rate=self._critic_learning_rate,
-                                         temp_learning_rate=self._temp_learning_rate,
-                                         alpha_learning_rate=self._actor_learning_rate,
-                                         tau=self._tau,
-                                         n_critics=self._n_critics,
-                                         initial_temperature=self._initial_temperature,
-                                         initial_alpha=self._initial_alpha,
-                                         alpha_threshold=self._alpha_threshold,
-                                         conservative_weight=self._conservative_weight,
-                                         n_action_samples=self._n_action_samples).create(device=self._device)
+            cql = d3rlpy.algos.CQLConfig(
+                batch_size=self._batch_size,
+                gamma=self._gamma,
+                actor_learning_rate=self._actor_learning_rate,
+                critic_learning_rate=self._critic_learning_rate,
+                temp_learning_rate=self._temp_learning_rate,
+                alpha_learning_rate=self._actor_learning_rate,
+                tau=self._tau,
+                n_critics=self._n_critics,
+                initial_temperature=self._initial_temperature,
+                initial_alpha=self._initial_alpha,
+                alpha_threshold=self._alpha_threshold,
+                conservative_weight=self._conservative_weight,
+                n_action_samples=self._n_action_samples,
+            ).create(device=self._device)
 
         # remove path and extension
         log_filename = log_filename.split('/')[1].split('.')[0]
@@ -98,12 +104,12 @@ class BweCQL:
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
         )
         # export onnx model
-#        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
-#        cql.save_policy(policy_file)
+        #        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
+        #        cql.save_policy(policy_file)
         success = True
         return success
 
-    def train_model (self):
+    def train_model(self):
         # load the list of log files under the given directory
         # iterate over files in
         # that directory
@@ -118,7 +124,7 @@ class BweCQL:
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
         # keep for debugging purpose
-#        datafiles = train_data_files[0:10]
+        #        datafiles = train_data_files[0:10]
         datafiles = train_data_files
         for file in datafiles:
             success = self.train_episode(file)
@@ -128,6 +134,7 @@ class BweCQL:
         print("Training of " + str(len(datafiles)) + " episodes!\n")
         print("The latest trained model is placed under the log folder")
         return success
+
 
 class BweSAC:
     def __init__(self, params):
@@ -154,12 +161,12 @@ class BweSAC:
     #  log_filename - fullname including path of training data file
     # return:
     #  success: True/False
-    def train_episode (self, log_filename = ''):
+    def train_episode(self, log_filename=''):
         # flag for successful/unsuccessful traning of one episode
         success = False
 
         # if the log_filename is not given
-        if(log_filename == ''):
+        if log_filename == '':
             print("train_episode() - Please provide a valid log filename! \n")
             return ('', success)
 
@@ -185,14 +192,16 @@ class BweSAC:
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.d3'
             sac = d3rlpy.load_learnable(output_model_full_name, device=self._device)
         else:
-            sac = d3rlpy.algos.SACConfig(batch_size=self._batch_size,
-                                         gamma=self._gamma,
-                                         actor_learning_rate=self._actor_learning_rate,
-                                         critic_learning_rate=self._critic_learning_rate,
-                                         temp_learning_rate=self._temp_learning_rate,
-                                         tau=self._tau,
-                                         n_critics=self._n_critics,
-                                         initial_temperature=self._initial_temperature).create(device=self._device)
+            sac = d3rlpy.algos.SACConfig(
+                batch_size=self._batch_size,
+                gamma=self._gamma,
+                actor_learning_rate=self._actor_learning_rate,
+                critic_learning_rate=self._critic_learning_rate,
+                temp_learning_rate=self._temp_learning_rate,
+                tau=self._tau,
+                n_critics=self._n_critics,
+                initial_temperature=self._initial_temperature,
+            ).create(device=self._device)
 
         # remove path and extension
         log_filename = log_filename.split('/')[1].split('.')[0]
@@ -208,12 +217,12 @@ class BweSAC:
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
         )
         # export onnx model
-#        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
-#        sac.save_policy(policy_file)
+        #        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
+        #        sac.save_policy(policy_file)
         success = True
         return success
 
-    def train_model (self):
+    def train_model(self):
         # load the list of log files under the given directory
         # iterate over files in
         # that directory
@@ -227,7 +236,7 @@ class BweSAC:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-#       datafiles = train_data_files[0:10]
+        #       datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:
@@ -237,8 +246,12 @@ class BweSAC:
         print("The latest trained model is placed under the log folder")
         return success
 
+
 class BweBCQ:
-    def __init__(self, params, ):
+    def __init__(
+        self,
+        params,
+    ):
         self._output_model_name = params['outputModelName']
         self._log_dir_pre = params['logFolderName']
         self._train_data_dir = params['trainDataFolder']
@@ -267,12 +280,12 @@ class BweBCQ:
     #  log_filename - fullname including path of training data file
     # return:
     #  success: True/False
-    def train_episode (self, log_filename = ''):
+    def train_episode(self, log_filename=''):
         # flag for successful/unsuccessful traning of one episode
         success = False
 
         # if the log_filename is not given
-        if(log_filename == ''):
+        if log_filename == '':
             print("train_episode() - Please provide a valid log filename! \n")
             return ('', success)
 
@@ -298,19 +311,21 @@ class BweBCQ:
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.d3'
             bcq = d3rlpy.load_learnable(output_model_full_name, device=self._device)
         else:
-            bcq = d3rlpy.algos.BCQConfig(batch_size=self._batch_size,
-                                         gamma=self._gamma,
-                                         actor_learning_rate=self._actor_learning_rate,
-                                         critic_learning_rate=self._critic_learning_rate,
-                                         imitator_learning_rate=self._imitator_learning_rate,
-                                         tau=self._tau,
-                                         n_critics=self._n_critics,
-                                         update_actor_interval=self._update_actor_interval,
-                                         lam=self._lam,
-                                         n_action_samples=self._n_action_samples,
-                                         action_flexibility=self._action_flexibility,
-                                         beta=self._beta,
-                                         rl_start_step=self._rl_start_step).create(device=self._device)
+            bcq = d3rlpy.algos.BCQConfig(
+                batch_size=self._batch_size,
+                gamma=self._gamma,
+                actor_learning_rate=self._actor_learning_rate,
+                critic_learning_rate=self._critic_learning_rate,
+                imitator_learning_rate=self._imitator_learning_rate,
+                tau=self._tau,
+                n_critics=self._n_critics,
+                update_actor_interval=self._update_actor_interval,
+                lam=self._lam,
+                n_action_samples=self._n_action_samples,
+                action_flexibility=self._action_flexibility,
+                beta=self._beta,
+                rl_start_step=self._rl_start_step,
+            ).create(device=self._device)
 
         # remove path and extension
         log_filename = log_filename.split('/')[1].split('.')[0]
@@ -326,12 +341,12 @@ class BweBCQ:
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
         )
         # export onnx model
-#        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
-#        bcq.save_policy(policy_file)
+        #        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
+        #        bcq.save_policy(policy_file)
         success = True
         return success
 
-    def train_model (self):
+    def train_model(self):
         # load the list of log files under the given directory
         # iterate over files in
         # that directory
@@ -345,7 +360,7 @@ class BweBCQ:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-#        datafiles = train_data_files[0:10]
+        #        datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:
@@ -354,6 +369,7 @@ class BweBCQ:
         print("Training of " + str(len(datafiles)) + " episodes!\n")
         print("The latest trained model is placed under the log folder")
         return success
+
 
 class BweDT:
     def __init__(self, params):
@@ -384,12 +400,12 @@ class BweDT:
     #  log_filename - fullname including path of training data file
     # return:
     #  success: True/False
-    def train_episode (self, log_filename = ''):
+    def train_episode(self, log_filename=''):
         # flag for successful/unsuccessful traning of one episode
         success = False
 
         # if the log_filename is not given
-        if(log_filename == ''):
+        if log_filename == '':
             print("train_episode() - Please provide a valid log filename! \n")
             return ('', success)
 
@@ -434,12 +450,12 @@ class BweDT:
         )
 
         # export as ONNX
-#        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
-#        dt.save_policy(policy_file)
+        #        policy_file = output_model_full_name.split('.'),[1] + '.onnx'
+        #        dt.save_policy(policy_file)
         success = True
         return success
 
-    def train_model (self):
+    def train_model(self):
         # load the list of log files under the given directory
         # iterate over files in
         # that directory
@@ -453,7 +469,7 @@ class BweDT:
         # Initially there is no pre-trained model
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir_pre + "_" + start_date
-#        datafiles = train_data_files[0:10]
+        #        datafiles = train_data_files[0:10]
         for file in datafiles:
             success = self.train_episode(file)
             if success == False:

@@ -1,25 +1,28 @@
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import d3rlpy
 import numpy as np
-
-import os
-import BweReward
-from BweUtils import load_data
-from BweLogger import BweAdapter, BweAdapterFactory
 import onnxruntime as ort
+import os
+from tqdm import tqdm
+
+from BweReward import RewardFunction
+from BweUtils import load_train_data, load_test_data
+from BweLogger import BweAdapter, BweAdapterFactory
+
 
 class BweDrl:
-    def __init__(self, params, algo : d3rlpy.base.LearnableBase):
+    def __init__(self, params, algo: d3rlpy.base.LearnableBase):
         self._log_dir = params['logFolderName']
         self._train_data_dir = params['trainDataFolder']
         self._test_data_dir = params['testDataFolder']
+        self._train_on_max_files = params['trainOnMaxFiles']
         self._device = params['device']
         self._output_model_name = params['outputModelName']
         self._algo = algo
-        rf_name = params['rewardFuncName']
-        self._reward_func = getattr(BweReward, rf_name)
+        self._reward_func = RewardFunction(params['rewardFuncName'])
 
-    def train_model (self):
+    def train_model(self):
         # load the list of log files under the given directory
         # iterate over files in that directory
         files = sorted(os.listdir(self._train_data_dir))
@@ -29,64 +32,98 @@ class BweDrl:
             # checking if it is a file
             if os.path.isfile(f):
                 train_data_files.append(f)
-        # Initially there is no pre-trained model
+                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
+                    break
+        print(f"Files to load: {len(train_data_files)}")
+
+        # fill the MDP dataset
+        observations = []
+        actions = []
+        rewards = []
+        terminals = []
+        timeouts = []
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self._process_file, filename) for filename in train_data_files]
+            for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
+                result = future.result()
+                observations_file, actions_file, rewards_file, terminals_file, timeouts_file = result
+                observations.append(observations_file)
+                actions.append(actions_file)
+                rewards.append(rewards_file)
+                terminals.append(terminals_file)
+                timeouts.append(timeouts_file)
+
+        print("All files are processed!")
+        # flatten the lists
+        observations = np.concatenate(observations)
+        actions = np.concatenate(actions)
+        rewards = np.concatenate(rewards)
+        terminals = np.concatenate(terminals)
+        timeouts = np.concatenate(timeouts)
+
+        # create the offline learning dataset
+        dataset = d3rlpy.dataset.MDPDataset(
+            observations=observations,
+            actions=actions,
+            rewards=rewards,
+            terminals=terminals,
+            timeouts=timeouts,
+        )
+
+        n_steps = len(observations)
+        # FIXME: tune it? 10000 is the default value for all Q-learning algorithms
+        n_steps_per_epoch = min(n_steps, 10000)
+        print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
+
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
-#        train_data_files = train_data_files[0:10]
-        for filename in train_data_files:
-            # load the log file and prepare the dataset
-            observations, actions = load_data(filename)
-            # terminal flags
-            terminals = np.random.randint(2, size=len(actions))
-            # calculate reward
-            rewards = np.zeros(len(observations))
-            for i, o in enumerate(list(observations)):
-                rewards[i] = self._reward_func(o)
-
-            # create the offline learning dataset
-            dataset = d3rlpy.dataset.MDPDataset(
-                observations=observations,
-                actions=actions,
-                rewards=rewards,
-                terminals=terminals,
-            )
-
-            # remove path and extension
-            exp_filename = filename.split('/')[1].split('.')[0]
-            n_steps = len(observations)
-            n_steps_per_epoch = n_steps
-#            n_steps = 10
-#            n_steps_per_epoch = 10
-            # offline training
-            self._algo.fit(
-                dataset,
-                n_steps,
-                n_steps_per_epoch,
-                experiment_name=exp_filename,
-                with_timestamp=False,
-                logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-            )
-
-        #
-        print("Training of " + str(len(train_data_files)) + " episodes!\n")
         print("The latest trained model is placed under the log folder " + self._log_dir)
+
+        # offline training
+        self._algo.fit(
+            dataset,
+            n_steps=n_steps,
+            n_steps_per_epoch=n_steps_per_epoch,
+            experiment_name=f"experiment_{start_date}",
+            with_timestamp=False,
+            logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+        )
+
         policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
         self._algo.save_policy(policy_file_name)
-        print("The exported policy file is " + policy_file_name)
 
-    def export_policy (self):
+    # FIXME: if I understood correctly, you can actually train once on all the files, it will internally sseparated into the episodes,
+    # if one gives the proper terminals/timeouts, please validate it (Nikita)
+    def _process_file(self, filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+        # load the log file and prepare the dataset
+        observations_file, actions_file, _, _ = load_train_data(filename)
+        assert len(observations_file) > 0, f"File {filename} is empty"
+        # calculate reward
+        rewards_file = np.array([self._reward_func(o) for o in observations_file])
+        # terminals are not used so they should be non 1.0
+        terminals_file = np.zeros(len(observations_file))
+        # timeout at the end of the file
+        timeouts_file = np.zeros(len(observations_file))
+        timeouts_file[-1] = 1.0
+        return observations_file, actions_file, rewards_file, terminals_file, timeouts_file
+
+    def export_policy(self):
         if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.onnx'
             self._algo.save_policy(output_model_full_name)
             print("The model is exported as " + output_model_full_name)
 
-    def evaluate_model_offline (self):
+    def evaluate_model_offline(self):
         # setup algorithm manually
         # if there is already a pre-trained model, load it
         if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
             output_model_full_name = self._log_dir + '/' + self._output_model_name + '.d3'
             algo = d3rlpy.load_learnable(output_model_full_name, device=self._device)
-            print("Load the pre-trained model from the file" + output_model_full_name + " for evaluation with emulated data!")
+            print(
+                "Load the pre-trained model from the file"
+                + output_model_full_name
+                + " for evaluation with emulated data!"
+            )
         else:
             print("There is no pre-trained model for evaluation!\n")
             return
@@ -100,10 +137,10 @@ class BweDrl:
             if os.path.isfile(f):
                 test_data_files.append(f)
 
-#        test_data_files = test_data_files[0:10]
+        #        test_data_files = test_data_files[0:10]
         # predict
         for file in test_data_files:
-            observations, actions = load_data(file)
+            observations, actions, _, _ = load_train_data(file)
             predictions_diff = []
             for observation, action in zip(observations, actions):
                 # Add batch dimension
@@ -133,7 +170,6 @@ class BweDrl:
         print(action)
 
 
-
 def createCQL(params):
     # parameters for algorithm
     _device = params['device']
@@ -152,21 +188,24 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-    cql = d3rlpy.algos.CQLConfig(batch_size=_batch_size,
-                                 gamma=_gamma,
-                                 actor_learning_rate=_actor_learning_rate,
-                                 critic_learning_rate=_critic_learning_rate,
-                                 temp_learning_rate=_temp_learning_rate,
-                                 alpha_learning_rate=_alpha_learning_rate,
-                                 tau=_tau,
-                                 n_critics=_n_critics,
-                                 initial_alpha=_initial_alpha,
-                                 initial_temperature=_initial_temperature,
-                                 alpha_threshold=_alpha_threshold,
-                                 conservative_weight=_conservative_weight,
-                                 n_action_samples=_n_action_samples).create(device=_device)
+    cql = d3rlpy.algos.CQLConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        temp_learning_rate=_temp_learning_rate,
+        alpha_learning_rate=_alpha_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        initial_alpha=_initial_alpha,
+        initial_temperature=_initial_temperature,
+        alpha_threshold=_alpha_threshold,
+        conservative_weight=_conservative_weight,
+        n_action_samples=_n_action_samples,
+    ).create(device=_device)
 
     return cql
+
 
 def createSAC(params):
     # parameters for algorithm
@@ -180,17 +219,19 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
-    sac = d3rlpy.algos.SACConfig(batch_size=_batch_size,
-                                 gamma=_gamma,
-                                 actor_learning_rate=_actor_learning_rate,
-                                 critic_learning_rate=_critic_learning_rate,
-                                 temp_learning_rate=_temp_learning_rate,
-                                 tau=_tau,
-                                 n_critics=_n_critics,
-                                 initial_temperature=_initial_temperature
-                                 ).create(device=_device)
+    sac = d3rlpy.algos.SACConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        temp_learning_rate=_temp_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        initial_temperature=_initial_temperature,
+    ).create(device=_device)
 
     return sac
+
 
 def createBCQ(params):
     # parameters for algorithm
@@ -209,21 +250,24 @@ def createBCQ(params):
     _rl_start_step = params["rl_start_step"]
     _device = params['device']
 
-    bcq = d3rlpy.algos.BCQConfig(batch_size=_batch_size,
-                                 gamma=_gamma,
-                                 actor_learning_rate=_actor_learning_rate,
-                                 critic_learning_rate=_critic_learning_rate,
-                                 imitator_learning_rate=_imitator_learning_rate,
-                                 tau=_tau,
-                                 n_critics=_n_critics,
-                                 update_actor_interval=_update_actor_interval,
-                                 lam=_lam,
-                                 n_action_samples=_n_action_samples,
-                                 action_flexibility=_action_flexibility,
-                                 beta=_beta,
-                                 rl_start_step=_rl_start_step).create(device=_device)
+    bcq = d3rlpy.algos.BCQConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        imitator_learning_rate=_imitator_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        update_actor_interval=_update_actor_interval,
+        lam=_lam,
+        n_action_samples=_n_action_samples,
+        action_flexibility=_action_flexibility,
+        beta=_beta,
+        rl_start_step=_rl_start_step,
+    ).create(device=_device)
 
     return bcq
+
 
 def createDT(params):
     # parameters for algorithm
@@ -242,18 +286,20 @@ def createDT(params):
     _learning_rate = params['learning_rate']
     _device = params['device']
 
-    dt = d3rlpy.algos.DecisionTransformerConfig(batch_size=_batch_size,
-                                                 gamma=_gamma,
-                                                 context_size=_context_size,
-                                                 max_timestep=_max_timestep,
-                                                 learning_rate=_learning_rate,
-                                                 num_heads=_num_heads,
-                                                 num_layers=_num_layers,
-                                                 attn_dropout=_attn_dropout,
-                                                 resid_dropout=_resid_dropout,
-                                                 embed_dropout=_embed_dropout,
-                                                 activation_type=_activation_type,
-                                                 warmup_steps=_warmup_steps,
-                                                 clip_grad_norm=_clip_grad_norm).create(device=_device)
+    dt = d3rlpy.algos.DecisionTransformerConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        context_size=_context_size,
+        max_timestep=_max_timestep,
+        learning_rate=_learning_rate,
+        num_heads=_num_heads,
+        num_layers=_num_layers,
+        attn_dropout=_attn_dropout,
+        resid_dropout=_resid_dropout,
+        embed_dropout=_embed_dropout,
+        activation_type=_activation_type,
+        warmup_steps=_warmup_steps,
+        clip_grad_norm=_clip_grad_norm,
+    ).create(device=_device)
 
     return dt

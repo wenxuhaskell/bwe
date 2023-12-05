@@ -1,21 +1,13 @@
 import argparse
-import time
-
 import json
-import d3rlpy
 import numpy as np
 
-import os
 import BweModels
-import onnxruntime as ort
 
-import BweReward
-import BweUtils
-import BweLogger
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--conf", type=str, default="cqlconf.json")
+    parser.add_argument("-c", "--conf", type=str, default="cqlconf.json")
     args = parser.parse_args()
 
     # load the configuration parameters
@@ -40,5 +32,7 @@ def main() -> None:
     bwe.train_model()
 
     bwe.evaluate_model_offline()
+
+
 if __name__ == "__main__":
     main()
