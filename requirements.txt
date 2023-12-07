@@ -6,4 +6,4 @@ tqdm>=4.64.0
 onnx>=1.11.0
 onnxruntime>=1.11.1
 torch>=1.13.1
-d3rlpy>=2.0.0
+d3rlpy>=2.3.0

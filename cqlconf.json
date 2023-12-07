@@ -4,6 +4,7 @@
   "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "testdata",
+  "trainOnMaxFiles": -1,
   "rewardFuncName": "QOE_V1",
   "outputModelName": "cqlmodel",
   "logFolderName": "CQL",
@@ -19,6 +20,5 @@
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0003,
   "temp_learning_rate": 0.0001,
-  "alpha_learning_rate": 0.0001,
-  "device": "cpu:0"
+  "alpha_learning_rate": 0.0001
 }

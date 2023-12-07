@@ -3,7 +3,7 @@
     "algorithmName":"CQL",
     "trainDataFolder": "/home/code/bandwidth_challenge/data/testbed_dataset",
     "testDataFolder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-    "trainOnMaxFiles": -1,
+    "trainOnMaxFiles": 10000,
     "rewardFuncName": "qoe_v1",
     "outputModelName": "cqlmodel",
     "logFolderName": "CQL",
@@ -15,10 +15,9 @@
     "n_critics": 2,
     "initial_temperature": 1.0,
     "tau": 0.005,
-    "batch_size": 256,
+    "batch_size": 128,
     "actor_learning_rate": 0.0001,
     "critic_learning_rate": 0.0003,
     "temp_learning_rate": 0.0001,
-    "alpha_learning_rate": 0.0001,
-    "device": "cuda:0"
+    "alpha_learning_rate": 0.0001
 }

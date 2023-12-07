@@ -7,8 +7,8 @@ import os
 from tqdm import tqdm
 
 from BweReward import RewardFunction
-from BweUtils import load_train_data, load_test_data
-from BweLogger import BweAdapter, BweAdapterFactory
+from BweUtils import load_train_data
+from BweLogger import BweAdapterFactory
 
 
 class BweDrl:
@@ -17,10 +17,11 @@ class BweDrl:
         self._train_data_dir = params['trainDataFolder']
         self._test_data_dir = params['testDataFolder']
         self._train_on_max_files = params['trainOnMaxFiles']
-        self._device = params['device']
         self._output_model_name = params['outputModelName']
         self._algo = algo
         self._reward_func = RewardFunction(params['rewardFuncName'])
+        self._device = params['device']
+        self._ddp = params['ddp']
 
     def train_model(self):
         # load the list of log files under the given directory
@@ -56,9 +57,6 @@ class BweDrl:
                 rewards.append(rewards_file)
                 terminals.append(terminals_file)
                 timeouts.append(timeouts_file)
-
-        print("All files are processed!")
-        # flatten the lists
         observations = np.concatenate(observations)
         actions = np.concatenate(actions)
         rewards = np.concatenate(rewards)
@@ -74,9 +72,10 @@ class BweDrl:
             timeouts=timeouts,
             action_space=d3rlpy.ActionSpace.CONTINUOUS
         )
+        print("MDP dataset is created")
 
         n_steps = len(observations)
-        # FIXME: tune it? 10000 is the default value for all Q-learning algorithms
+        # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
         n_steps_per_epoch = min(n_steps, 10000)
         print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
 
@@ -92,6 +91,7 @@ class BweDrl:
             experiment_name=f"experiment_{start_date}",
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+            enable_ddp=self._ddp,
         )
 
         policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
@@ -179,8 +179,6 @@ class BweDrl:
 
 def createCQL(params):
     # parameters for algorithm
-    _device = params['device']
-
     _batch_size = params['batch_size']
     _initial_alpha = params["initial_alpha"]
     _gamma = params["gamma"]
@@ -209,14 +207,13 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
-    ).create(device=_device)
+    ).create(device=params['device'])
 
     return cql
 
 
 def createSAC(params):
     # parameters for algorithm
-    _device = params['device']
     _batch_size = params['batch_size']
     _gamma = params["gamma"]
     _initial_temperature = params["initial_temperature"]
@@ -235,7 +232,7 @@ def createSAC(params):
         tau=_tau,
         n_critics=_n_critics,
         initial_temperature=_initial_temperature,
-    ).create(device=_device)
+    ).create(device=params['device'])
 
     return sac
 
@@ -255,7 +252,6 @@ def createBCQ(params):
     _imitator_learning_rate = params["imitator_learning_rate"]
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
-    _device = params['device']
 
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
@@ -271,7 +267,7 @@ def createBCQ(params):
         action_flexibility=_action_flexibility,
         beta=_beta,
         rl_start_step=_rl_start_step,
-    ).create(device=_device)
+    ).create(device=params['device'])
 
     return bcq
 
@@ -291,7 +287,6 @@ def createDT(params):
     _warmup_steps = params["warmup_steps"]
     _clip_grad_norm = params["clip_grad_norm"]
     _learning_rate = params['learning_rate']
-    _device = params['device']
 
     dt = d3rlpy.algos.DecisionTransformerConfig(
         batch_size=_batch_size,
@@ -307,6 +302,6 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-    ).create(device=_device)
+    ).create(device=params['device'])
 
     return dt
