@@ -3,7 +3,7 @@
     "algorithmName":"CQL",
     "trainDataFolder": "/home/code/bandwidth_challenge/data/testbed_dataset",
     "testDataFolder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-    "trainOnMaxFiles": 10000,
+    "trainOnMaxFiles": 1000,
     "rewardFuncName": "qoe_v1",
     "outputModelName": "cqlmodel",
     "logFolderName": "CQL",

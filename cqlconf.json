@@ -1,7 +1,6 @@
 
 {
   "algorithmName":"CQL",
-  "trainOnMaxFiles":10000,
   "trainDataFolder": "data",
   "testDataFolder": "testdata",
   "trainOnMaxFiles": -1,

@@ -8,12 +8,15 @@ import torch.distributed as dist
 import BweModels
 
 
-def get_device() -> str:
+def get_device(is_ddp: bool = False) -> str:
     is_cuda = torch.cuda.is_available()
     if is_cuda:
-        rank = d3rlpy.distributed.init_process_group("nccl")
+        rank = d3rlpy.distributed.init_process_group("nccl") if is_ddp else 0
         device = f"cuda:{rank}"
-        print(f"Training on {device} device with rank {dist.get_rank()} and world_size {dist.get_world_size()}...")
+        print(
+            f"Training on {device} device with rank {dist.get_rank() if is_ddp else 0} and world_size"
+            f" {dist.get_world_size() if is_ddp else 0}..."
+        )
     else:
         rank = 0
         device = "cpu:0"
@@ -24,7 +27,7 @@ def get_device() -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf", type=str, default="cqlconf.json")
-    parser.add_argument("-d", "--ddp", action="store_true")
+    parser.add_argument("-d", "--ddp", default=False, action="store_true")
     args = parser.parse_args()
 
     # load the configuration parameters
@@ -32,8 +35,8 @@ def main() -> None:
     params = json.load(f)
     f.close()
     # add device
-    params['device'] = get_device()
     params['ddp'] = args.ddp
+    params['device'] = get_device(args.ddp)
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)

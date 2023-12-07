@@ -43,10 +43,6 @@ class BweDrl:
         rewards = []
         terminals = []
         timeouts = []
-        # for debugging purpose
-        if True:
-            train_data_files = train_data_files[0:5]
-
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(self._process_file, filename) for filename in train_data_files]
             for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
@@ -70,7 +66,7 @@ class BweDrl:
             rewards=rewards,
             terminals=terminals,
             timeouts=timeouts,
-            action_space=d3rlpy.ActionSpace.CONTINUOUS
+            action_space=d3rlpy.ActionSpace.CONTINUOUS,
         )
         print("MDP dataset is created")
 
@@ -107,8 +103,8 @@ class BweDrl:
         rewards_file = np.array([self._reward_func(o) for o in observations_file])
         # terminals are not used so they should be non 1.0
         terminals_file = np.zeros(len(observations_file))
-#        terminals_file = np.random.randint(2, size=len(observations_file))
-#        terminals_file[-1] = 0.0
+        #        terminals_file = np.random.randint(2, size=len(observations_file))
+        #        terminals_file[-1] = 0.0
         # timeout at the end of the file
         timeouts_file = np.zeros(len(observations_file))
         timeouts_file[-1] = 1.0
