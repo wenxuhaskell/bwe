@@ -12,14 +12,6 @@ def load_train_data(
         return None
 
     bandwidth_predictions = np.array(data['bandwidth_predictions'])
-    # to make it as type of float32
-    # this is required for creating continuous actions space
-
-    # TODO: why +0.01? You can cast the whole np array to float. I don't understand this line (Nikita)
-    bandwidth_predictions = bandwidth_predictions + 0.001
-    #bandwidth_predictions = bandwidth_predictions.astype(np.float32)
-    #print("action type")
-    #print(bandwidth_predictions.dtype)
     observations = np.array(data['observations'])
     video_quality = np.array(data['video_quality'])
     audio_quality = np.array(data['audio_quality'])
@@ -35,8 +27,7 @@ def load_test_data(
 
     bandwidth_predictions = np.array(data['bandwidth_predictions'])
     # to make it as type of float32
-    # this is required for creating continuous actions space
-    bandwidth_predictions = bandwidth_predictions + 0.01
+    bandwidth_predictions = bandwidth_predictions.astype(np.float32)
 
     observations = np.array(data['observations'])
     video_quality = np.array(data['video_quality'])
