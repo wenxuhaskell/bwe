@@ -47,17 +47,17 @@ class BweDrl:
             futures = [executor.submit(self._process_file, filename) for filename in train_data_files]
             for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
                 result = future.result()
-                observations_file, actions_file, rewards_file, terminals_file, timeouts_file = result
+                observations_file, actions_file, rewards_file, terminals_file = result
                 observations.append(observations_file)
                 actions.append(actions_file)
                 rewards.append(rewards_file)
                 terminals.append(terminals_file)
-                timeouts.append(timeouts_file)
+#                timeouts.append(timeouts_file)
         observations = np.concatenate(observations)
         actions = np.concatenate(actions)
         rewards = np.concatenate(rewards)
         terminals = np.concatenate(terminals)
-        timeouts = np.concatenate(timeouts)
+#        timeouts = np.concatenate(timeouts)
 
         # create the offline learning dataset
         dataset = d3rlpy.dataset.MDPDataset(
@@ -65,7 +65,7 @@ class BweDrl:
             actions=actions,
             rewards=rewards,
             terminals=terminals,
-            timeouts=timeouts,
+#            timeouts=timeouts,
             action_space=d3rlpy.ActionSpace.CONTINUOUS,
         )
         print("MDP dataset is created")
@@ -102,13 +102,14 @@ class BweDrl:
         # calculate reward
         rewards_file = np.array([self._reward_func(o) for o in observations_file])
         # terminals are not used so they should be non 1.0
-        terminals_file = np.zeros(len(observations_file))
-        #        terminals_file = np.random.randint(2, size=len(observations_file))
-        #        terminals_file[-1] = 0.0
+#        terminals_file = np.zeros(len(observations_file))
+#        terminals_file[-1] = 1.0
+        terminals_file = np.random.randint(2, size=len(observations_file))
+#        terminals_file[-1] = 1.0
         # timeout at the end of the file
-        timeouts_file = np.zeros(len(observations_file))
-        timeouts_file[-1] = 1.0
-        return observations_file, actions_file, rewards_file, terminals_file, timeouts_file
+        #timeouts_file = np.zeros(len(observations_file))
+        #timeouts_file[-1] = 1.0
+        return observations_file, actions_file, rewards_file, terminals_file
 
     def export_policy(self):
         if os.path.exists(os.path.join(self._log_dir, f"{self._output_model_name}.d3")):
