@@ -103,9 +103,7 @@ class BweDrl:
         rewards_file = np.array([self._reward_func(o) for o in observations_file])
         # terminals are not used so they should be non 1.0
 #        terminals_file = np.zeros(len(observations_file))
-#        terminals_file[-1] = 1.0
         terminals_file = np.random.randint(2, size=len(observations_file))
-#        terminals_file[-1] = 1.0
         # timeout at the end of the file
         #timeouts_file = np.zeros(len(observations_file))
         #timeouts_file[-1] = 1.0
