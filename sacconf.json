@@ -1,7 +1,7 @@
 
 {
   "algorithmName":"SAC",
-  "trainOnMaxFiles":10000,
+  "trainOnMaxFiles":1,
   "trainDataFolder": "data",
   "testDataFolder": "edata",
   "logFolderName": "SAC",
@@ -11,7 +11,7 @@
   "n_critics": 2,
   "initial_temperature": 1.0,
   "tau": 0.005,
-  "batch_size": 256,
+  "batch_size": 1,
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0003,
   "temp_learning_rate": 0.0003,

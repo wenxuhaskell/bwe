@@ -54,7 +54,7 @@ def main() -> None:
     bwe = BweModels.BweDrl(params, algo)
     bwe.train_model()
 
-    bwe.evaluate_model_offline()
+#    bwe.evaluate_model_offline()
 
     d3rlpy.distributed.destroy_process_group()
 

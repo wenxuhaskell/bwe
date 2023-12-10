@@ -1,6 +1,7 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import d3rlpy
+from d3rlpy.models.encoders import register_encoder_factory
 import numpy as np
 import onnxruntime as ort
 import os
@@ -9,7 +10,7 @@ from tqdm import tqdm
 from BweReward import RewardFunction
 from BweUtils import load_train_data
 from BweLogger import BweAdapterFactory
-
+from BweEncoder import LSTMEncoderFactory
 
 class BweDrl:
     def __init__(self, params, algo: d3rlpy.base.LearnableBase):
@@ -22,6 +23,9 @@ class BweDrl:
         self._reward_func = RewardFunction(params['rewardFuncName'])
         self._device = params['device']
         self._ddp = params['ddp']
+
+        # register your own encoder factory
+        register_encoder_factory(LSTMEncoderFactory)
 
     def train_model(self):
         # load the list of log files under the given directory
@@ -218,6 +222,8 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
+    lstm_encoder_factory = LSTMEncoderFactory(1)
+
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -227,6 +233,8 @@ def createSAC(params):
         tau=_tau,
         n_critics=_n_critics,
         initial_temperature=_initial_temperature,
+        actor_encoder_factory=lstm_encoder_factory,
+        critic_encoder_factory=lstm_encoder_factory
     ).create(device=params['device'])
 
     return sac
