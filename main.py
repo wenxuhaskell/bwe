@@ -54,9 +54,12 @@ def main() -> None:
     bwe = BweModels.BweDrl(params, algo)
     bwe.train_model()
 
-#    bwe.evaluate_model_offline()
+    # disable it for now
+    if False:
+        bwe.evaluate_model_offline()
 
-    d3rlpy.distributed.destroy_process_group()
+    if params['ddp'] == True:
+        d3rlpy.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":
