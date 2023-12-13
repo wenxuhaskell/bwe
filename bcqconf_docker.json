@@ -1,0 +1,24 @@
+
+{
+  "algorithmName":"BCQ",
+  "trainOnMaxFiles":10000,
+  "trainDataFolder": "/home/code/bandwidth_challenge/data/testbed_dataset",
+  "testDataFolder": "/home/code/bandwidth_challenge/data/emulated_dataset",
+  "logFolderName": "BCQ",
+  "outputModelName": "bcqmodel",
+  "rewardFuncName": "QOE_V1",
+  "update_actor_interval": 2,
+  "n_action_samples": 100,
+  "n_critics": 2,
+  "tau": 0.005,
+  "beta":0.5,
+  "gamma": 0.99,
+  "lam":0.75,
+  "batch_size": 100,
+  "actor_learning_rate": 0.0001,
+  "critic_learning_rate": 0.0001,
+  "imitator_learning_rate": 0.0001,
+  "action_flexibility": 0.05,
+   "rl_start_step": 0,
+  "device": "cpu:0"
+}
