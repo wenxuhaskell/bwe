@@ -23,7 +23,7 @@ class BweAdapter(d3rlpy.logging.FileAdapter):
     ) -> None:
         path = os.path.join(self._logdir, f"{name}.csv")
         with open(path, "a") as f:
-            print(f"{self._experiment_name},{epoch},{step},{value}", file=f)
+            print(f"{epoch},{step},{value}", file=f)
 
 #    def after_write_metric(self, epoch: int, step: int) -> None:
 #        path = os.path.join(self._logdir, "experiments.csv")
