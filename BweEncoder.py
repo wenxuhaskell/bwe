@@ -14,13 +14,12 @@ class LSTMEncoder(nn.Module):
     def forward(self, inp):
         # Initialize hidden state with zeros
         # batch_size, sequence length, input dimension
-#        h0 = torch.zeros(1, 1, 128).requires_grad_()
+        h0 = torch.zeros(1, 1, 1).requires_grad_()
         # Initialize cell state
-#        c0 = torch.zeros(1, 1, 128).requires_grad_()
+        c0 = torch.zeros(1, 1, 1).requires_grad_()
         h = torch.relu(self.fc(inp))
-#        h, _ = self.lstm(h.unsqueeze(dim=0))
-        h, _ = self.lstm(h)
-#        h = h[:,-1,:]
+        h, _ = self.lstm(h.unsqueeze(dim=0), (h0, c0))
+        h = h[:,-1,:]
         h = torch.relu(h)
         return h
 
@@ -35,18 +34,13 @@ class LSTMEncoderWithAction(nn.Module):
     def forward(self, inp, action):
         # Initialize hidden state with zeros
         # batch_size, sequence length, input dimension
-#        h0 = torch.zeros(1, 1, 128).requires_grad_()
+        h0 = torch.zeros(1, 1, 1).requires_grad_()
         # Initialize cell state
-#        c0 = torch.zeros(1, 1, 128).requires_grad_()
-#        print("inp size: \n")
-#        print(inp.size())
-#        print("action size: \n")
-#        print(action.size())
+        c0 = torch.zeros(1, 1, 1).requires_grad_()
         h = torch.cat([inp, action], dim=1)
         h = torch.relu(self.fc(h))
-#        h, _ = self.lstm(h.unsqueeze(dim=0))
-        h, _ = self.lstm(h)
-#        h = h[:,-1,:]
+        h, _ = self.lstm(h.unsqueeze(dim=0), (h0, c0))
+        h = h[:,-1,:]
         h = torch.relu(h)
         return h
 

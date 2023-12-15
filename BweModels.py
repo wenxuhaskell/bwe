@@ -169,8 +169,10 @@ class BweDrl:
         # load ONNX policy via onnxruntime
         ort_session = ort.InferenceSession(policyFileName, providers=["CPUExecutionProvider"])
 
-        # to obtain observations from the dataset or environment (TODO)
+        # to obtain observations from the dataset
         observation = []
+        # add batch dimension
+        observation = observation.reshape((1, len(observation))).astype(np.float32)
         # returns greedy action
         action = ort_session.run(None, {'input_0': observation})
         print(action)
