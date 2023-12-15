@@ -7,7 +7,6 @@
   "logFolderName": "DT",
   "outputModelName": "dtmodel",
   "rewardFuncName": "QOE_V1",
-  "device": "cpu:0",
   "gamma": 0.99,
   "context_size": 20,
   "max_timestep": 1000,

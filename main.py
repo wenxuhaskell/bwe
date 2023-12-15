@@ -36,7 +36,10 @@ def main() -> None:
     f.close()
     # add device
     params['ddp'] = args.ddp
-    params['device'] = get_device(args.ddp)
+    if torch.cuda.is_available():
+        params['device'] = 'cuda:0'
+    else:
+        params['device'] = 'cpu=0'
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)
