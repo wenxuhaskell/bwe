@@ -44,7 +44,7 @@ def plotall(
 
             data = np.loadtxt(metrics_names[index], delimiter=",")
 
-            plt.plot(range(1, len(data[:,3])+1, 1), data[:, 3])
+            plt.plot(range(1, len(data[:,2])+1, 1), data[:, 2])
             plt.title(os.path.basename(titles[index]))
             plt.xlabel("epoch")
             plt.ylabel("value")
