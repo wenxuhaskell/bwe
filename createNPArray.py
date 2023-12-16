@@ -86,25 +86,26 @@ def main() -> None:
     actions = np.concatenate(actions)
     terminals = np.concatenate(terminals)
 
-    t1 = time.process_time()
-    np.savez(args.outfile, obs=observations, acts=actions, terms=terminals)
-    t2 = time.process_time()
-    print(f"Time for saving file: {t2 - t1}")
+    if args.outfile is not None:
+        t1 = time.process_time()
+        np.savez(args.outfile, obs=observations, acts=actions, terms=terminals)
+        t2 = time.process_time()
+        print(f"Time for saving file: {t2 - t1}")
 
-    t1 = time.process_time()
-    np.savez_compressed(args.outfile_comp, obs=observations, acts=actions, terms=terminals)
-    t2 = time.process_time()
+    if args.outfile_comp is not None:
+        t1 = time.process_time()
+        np.savez_compressed(args.outfile_comp, obs=observations, acts=actions, terms=terminals)
+        t2 = time.process_time()
+        print(f"Time for saving compressed file: {t2-t1}")
 
-    print(f"Time for saving compressed file: {t2-t1}")
+#    t3 = time.process_time()
+#    loaded = np.load(args.outfile_comp)
+#    t4 = time.process_time()
+#    print(f"Time for loading compressed file: {t4-t3}")
 
-    t3 = time.process_time()
-    loaded = np.load(args.outfile_comp)
-    t4 = time.process_time()
-    print(f"Time for loading compressed file: {t4-t3}")
-
-    print(loaded['obs'][5])
-    print(loaded['acts'][5])
-    print(loaded['terms'][5])
+#    print(loaded['obs'][5])
+#    print(loaded['acts'][5])
+#    print(loaded['terms'][5])
 
 
 
