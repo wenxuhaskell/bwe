@@ -36,7 +36,8 @@ def main() -> None:
     f.close()
     # add device
     params['ddp'] = args.ddp
-    params['device'] = get_device(args.ddp)
+    if 'device' not in params:
+        params['device'] = get_device(args.ddp)
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)
