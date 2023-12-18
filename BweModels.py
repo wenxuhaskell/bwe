@@ -12,6 +12,7 @@ from BweUtils import load_train_data
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory
 
+
 class BweDrl:
     def __init__(self, params, algo: d3rlpy.base.LearnableBase):
         self._log_dir = params['logFolderName']
@@ -56,12 +57,12 @@ class BweDrl:
                 actions.append(actions_file)
                 rewards.append(rewards_file)
                 terminals.append(terminals_file)
-#                timeouts.append(timeouts_file)
+        #                timeouts.append(timeouts_file)
         observations = np.concatenate(observations)
         actions = np.concatenate(actions)
         rewards = np.concatenate(rewards)
         terminals = np.concatenate(terminals)
-#        timeouts = np.concatenate(timeouts)
+        #        timeouts = np.concatenate(timeouts)
 
         # create the offline learning dataset
         dataset = d3rlpy.dataset.MDPDataset(
@@ -69,7 +70,7 @@ class BweDrl:
             actions=actions,
             rewards=rewards,
             terminals=terminals,
-#            timeouts=timeouts,
+            #            timeouts=timeouts,
             action_space=d3rlpy.ActionSpace.CONTINUOUS,
         )
         print("MDP dataset is created")
@@ -106,11 +107,11 @@ class BweDrl:
         # calculate reward
         rewards_file = np.array([self._reward_func(o) for o in observations_file])
         # terminals are not used so they should be non 1.0
-#        terminals_file = np.zeros(len(observations_file))
+        #        terminals_file = np.zeros(len(observations_file))
         terminals_file = np.random.randint(2, size=len(observations_file))
         # timeout at the end of the file
-        #timeouts_file = np.zeros(len(observations_file))
-        #timeouts_file[-1] = 1.0
+        # timeouts_file = np.zeros(len(observations_file))
+        # timeouts_file[-1] = 1.0
         return observations_file, actions_file, rewards_file, terminals_file
 
     def export_policy(self):
@@ -236,7 +237,7 @@ def createSAC(params):
         n_critics=_n_critics,
         initial_temperature=_initial_temperature,
         actor_encoder_factory=lstm_encoder_factory,
-        critic_encoder_factory=lstm_encoder_factory
+        critic_encoder_factory=lstm_encoder_factory,
     ).create(device=params['device'])
 
     return sac
