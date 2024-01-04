@@ -38,7 +38,6 @@ class LSTMEncoderWithAction(nn.Module):
         hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0), self.rnn_state)
         # TODO: detach?
         self.rnn_state = (rnn_state_undetached[0].detach(), rnn_state_undetached[1].detach())
-        print(f"RNN STATE: {self.rnn_state}")
         return torch.relu(hidden_output[:, -1, :]).cuda().detach()
 
 
