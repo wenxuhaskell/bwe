@@ -14,7 +14,7 @@ from BweEncoder import LSTMEncoderFactory
 
 
 class BweDrl:
-    def __init__(self, params, algo: d3rlpy.base.LearnableBase):
+    def __init__(self, params, algo: d3rlpy.algos.qlearning.QLearningAlgoBase):
         self._log_dir = params['logFolderName']
         self._train_data_dir = params['trainDataFolder']
         self._test_data_dir = params['testDataFolder']
@@ -28,121 +28,18 @@ class BweDrl:
         # register your own encoder factory
         register_encoder_factory(LSTMEncoderFactory)
 
-    def train_model_gradually(self):
-        # load the list of log files under the given directory
-        # iterate over files in that directory
-        files = sorted(os.listdir(self._train_data_dir))
-        train_data_files = []
-        for name in files:
-            f = os.path.join(self._train_data_dir, name)
-            # checking if it is a file
-            if os.path.isfile(f):
-                train_data_files.append(f)
-                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
-                    break
-        print(f"Files to load: {len(train_data_files)}")
-
-        # create log folder
-        start_date = datetime.now().strftime("%Y%m%d%H%M%S")
-        self._log_dir = self._log_dir + "_" + start_date
-        print(f"Logging folder {self._log_dir} is created.")
-
-        for filename in train_data_files:
-            # load the file (.npz), fill the MDP dataset
-            print(f"Load file {filename}.")
-            loaded = np.load(filename, 'rb')
-            observations = np.array(loaded['obs'])
-            actions = np.array(loaded['acts'])
-            terminals = np.array(loaded['terms'])
-            rewards = np.array([self._reward_func(o) for o in observations])
-
-            # create the offline learning dataset
-            dataset = d3rlpy.dataset.MDPDataset(
-                observations=observations,
-                actions=actions,
-                rewards=rewards,
-                terminals=terminals,
-                action_space=d3rlpy.ActionSpace.CONTINUOUS,
-            )
-            print("MDP dataset is created")
-
-            n_steps = len(observations)
-            # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
-            n_steps_per_epoch = min(n_steps, 10000)
-            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
-
-            # offline training
-            self._algo.fit(
-                dataset,
-                n_steps=n_steps,
-                n_steps_per_epoch=n_steps_per_epoch,
-                experiment_name=f"experiment_{start_date}",
-                with_timestamp=False,
-                logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-                enable_ddp=self._ddp,
-            )
-
-            print(f"Saving the trained model.")
-            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
-            self._algo.save_policy(policy_file_name)
-            model_file_name = self._log_dir + '/' + self._output_model_name + '.d3'
-            self._algo.save_model(model_file_name)
-
-
-        print("The latest trained model is placed under the log folder " + self._log_dir)
-        print("Training completed.\n")
-
     def train_model(self):
-        # load the list of log files under the given directory
-        # iterate over files in that directory
-        files = sorted(os.listdir(self._train_data_dir))
-        train_data_files = []
-        for name in files:
-            f = os.path.join(self._train_data_dir, name)
-            # checking if it is a file
-            if os.path.isfile(f):
-                train_data_files.append(f)
-                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
-                    break
-        print(f"Files to load: {len(train_data_files)}")
-
-        # fill the MDP dataset
-        observations = []
-        actions = []
-        rewards = []
-        terminals = []
-        timeouts = []
-        with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(self._process_file, filename) for filename in train_data_files]
-            for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
-                result = future.result()
-                observations_file, actions_file, rewards_file, terminals_file = result
-                observations.append(observations_file)
-                actions.append(actions_file)
-                rewards.append(rewards_file)
-                terminals.append(terminals_file)
-
-        observations = np.concatenate(observations)
-        actions = np.concatenate(actions)
-        rewards = np.concatenate(rewards)
-        terminals = np.concatenate(terminals)
-
-
-        # create the offline learning dataset
-        dataset = d3rlpy.dataset.MDPDataset(
-            observations=observations,
-            actions=actions,
-            rewards=rewards,
-            terminals=terminals,
-            #            timeouts=timeouts,
-            action_space=d3rlpy.ActionSpace.CONTINUOUS,
-        )
-        print("MDP dataset is created")
-
-        n_steps = len(observations)
-        # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
-        n_steps_per_epoch = min(n_steps, 10000)
-        print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
+        maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"
+        if os.path.exists(maybe_dataset_path):
+            print(f"Loading the MDP dataset: {maybe_dataset_path}")
+            dataset = self.load_mdp_dataset(maybe_dataset_path)
+        else:
+            print("Creating the MDP dataset")
+            dataset = self.create_mdp_dataset(save_name=f"dataset_{self._train_on_max_files}.h5")
+        n_steps = dataset.transition_count
+        n_steps_per_epoch = min(n_steps, 1000)
+        n_episodes = dataset.size()
+        print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {n_episodes} episodes")
 
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
@@ -156,26 +53,84 @@ class BweDrl:
             experiment_name=f"experiment_{start_date}",
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+            evaluators={
+                # TODO: use them later for the evaluation now they took too much time
+                #'td_error': d3rlpy.metrics.TDErrorEvaluator(),
+                #'discounted_advantage': d3rlpy.evaluators.DiscountedSumOfAdvantageEvaluator(),
+                #'average_value': d3rlpy.evaluators.AverageValueEstimationEvaluator(),
+                #'soft_opc': d3rlpy.evaluators.SoftOPCEvaluator(),
+                #'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(),
+            },
+            save_interval=10,
             enable_ddp=self._ddp,
         )
 
         policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
         self._algo.save_policy(policy_file_name)
 
-    # FIXME: if I understood correctly, you can actually train once on all the files, it will internally sseparated into the episodes,
-    # if one gives the proper terminals/timeouts, please validate it (Nikita)
+    def create_mdp_dataset(self, save_name: str | None = None) -> d3rlpy.dataset.MDPDataset:
+        files = sorted(os.listdir(self._train_data_dir))
+        train_data_files = []
+        for name in files:
+            f = os.path.join(self._train_data_dir, name)
+            if os.path.isfile(f):
+                train_data_files.append(f)
+                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
+                    break
+        print(f"Files to load: {len(train_data_files)}")
+
+        # fill the MDP dataset
+        observations = []
+        actions = []
+        rewards = []
+        terminals = []
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self._process_file, filename) for filename in train_data_files]
+            for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
+                result = future.result()
+                observations_file, actions_file, rewards_file, terminals_file = result
+                observations.append(observations_file)
+                actions.append(actions_file)
+                rewards.append(rewards_file)
+                terminals.append(terminals_file)
+        observations = np.concatenate(observations)
+        actions = np.concatenate(actions)
+        rewards = np.concatenate(rewards)
+        terminals = np.concatenate(terminals)
+
+        # create the offline learning dataset
+        dataset = d3rlpy.dataset.MDPDataset(
+            observations=observations,
+            actions=actions,
+            rewards=rewards,
+            terminals=terminals,
+            action_space=d3rlpy.ActionSpace.CONTINUOUS,
+        )
+        print("MDP dataset is created")
+
+        if save_name is not None:
+            os.makedirs("datasets", exist_ok=True)
+            dataset_path = os.path.join("datasets", f"{save_name}")
+            with open(dataset_path, "w+b") as f:
+                print(f"Saving the MDP dataset to {dataset_path}")
+                dataset.dump(f)
+
+        return dataset
+
+    def load_mdp_dataset(self, filepath: str) -> d3rlpy.dataset.ReplayBuffer:
+        with open(filepath, "r+b") as f:
+            return d3rlpy.dataset.ReplayBuffer(
+                d3rlpy.dataset.InfiniteBuffer(),
+                episodes=d3rlpy.dataset.io.load(d3rlpy.dataset.components.Episode, f),
+                action_space=d3rlpy.ActionSpace.CONTINUOUS,
+            )
+
     def _process_file(self, filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-        # load the log file and prepare the dataset
         observations_file, actions_file, _, _ = load_train_data(filename)
         assert len(observations_file) > 0, f"File {filename} is empty"
-        # calculate reward
         rewards_file = np.array([self._reward_func(o) for o in observations_file])
-        # terminals are not used so they should be non 1.0
-        #        terminals_file = np.zeros(len(observations_file))
-        terminals_file = np.random.randint(2, size=len(observations_file))
-        # timeout at the end of the file
-        # timeouts_file = np.zeros(len(observations_file))
-        # timeouts_file[-1] = 1.0
+        terminals_file = np.zeros(len(observations_file))
+        terminals_file[-1] = 1.0
         return observations_file, actions_file, rewards_file, terminals_file
 
     def export_policy(self):
@@ -273,6 +228,7 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
+        q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
     ).create(device=params['device'])
 
     return cql
