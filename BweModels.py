@@ -28,6 +28,66 @@ class BweDrl:
         # register your own encoder factory
         register_encoder_factory(LSTMEncoderFactory)
 
+    def train_model_gradually(self):
+        # load the list of log files under the given directory
+        # iterate over files in that directory
+        files = sorted(os.listdir(self._train_data_dir))
+        train_data_files = []
+        for name in files:
+            f = os.path.join(self._train_data_dir, name)
+            # checking if it is a file
+            if os.path.isfile(f):
+                train_data_files.append(f)
+                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
+                    break
+        print(f"Files to load: {len(train_data_files)}")
+
+        # create log folder
+        start_date = datetime.now().strftime("%Y%m%d%H%M%S")
+        self._log_dir = self._log_dir + "_" + start_date
+        print(f"Logging folder {self._log_dir} is created.")
+
+        for filename in train_data_files:
+            # load the file (.npz), fill the MDP dataset
+            print(f"Load file {filename}.")
+            loaded = np.load(filename, 'rb')
+            observations = np.array(loaded['obs'])
+            actions = np.array(loaded['acts'])
+            terminals = np.array(loaded['terms'])
+            rewards = np.array([self._reward_func(o) for o in observations])
+
+            # create the offline learning dataset
+            dataset = d3rlpy.dataset.MDPDataset(
+                observations=observations,
+                actions=actions,
+                rewards=rewards,
+                terminals=terminals,
+                action_space=d3rlpy.ActionSpace.CONTINUOUS,
+            )
+            print("MDP dataset is created")
+
+            n_steps = len(observations)
+            # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
+            n_steps_per_epoch = min(n_steps, 10000)
+            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
+
+            # offline training
+            self._algo.fit(
+                dataset,
+                n_steps=n_steps,
+                n_steps_per_epoch=n_steps_per_epoch,
+                experiment_name=f"experiment_{start_date}",
+                with_timestamp=False,
+                logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+                enable_ddp=self._ddp,
+            )
+
+            print(f"Saving the trained model.")
+            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+            self._algo.save_policy(policy_file_name)
+            model_file_name = self._log_dir + '/' + self._output_model_name + '.d3'
+            self._algo.save_model(model_file_name)
+
     def train_model(self):
         maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"
         if os.path.exists(maybe_dataset_path):
