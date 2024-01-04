@@ -288,6 +288,9 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
     ).create(device=params['device'])
 
@@ -318,6 +321,9 @@ def createSAC(params):
         initial_temperature=_initial_temperature,
         actor_encoder_factory=lstm_encoder_factory,
         critic_encoder_factory=lstm_encoder_factory,
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
 
     return sac
@@ -353,6 +359,9 @@ def createBCQ(params):
         action_flexibility=_action_flexibility,
         beta=_beta,
         rl_start_step=_rl_start_step,
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
 
     return bcq
@@ -388,6 +397,9 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
 
     return dt
