@@ -53,7 +53,7 @@ def main() -> None:
 
     # train the model
     bwe = BweModels.BweDrl(params, algo)
-    bwe.train_model()
+    bwe.train_model_gradually()
 
     # disable it for now
     if False:

@@ -37,75 +37,77 @@ def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarr
     # load the log file and prepare the dataset
     observations_file, actions_file, _, _ = load_train_data(filename)
     assert len(observations_file) > 0, f"File {filename} is empty"
-    # calculate reward
-#    rewards_file = np.array([self._reward_func(o) for o in observations_file])
     # terminals are not used so they should be non 1.0
-#        terminals_file = np.zeros(len(observations_file))
-    terminals_file = np.random.randint(2, size=len(observations_file))
-    # timeout at the end of the file
-    #timeouts_file = np.zeros(len(observations_file))
-    #timeouts_file[-1] = 1.0
+    terminals_file = np.zeros(len(observations_file))
+    terminals_file[-1] = 1
+#    terminals_file = np.random.randint(2, size=len(observations_file))
     return observations_file, actions_file, terminals_file
 
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dir", type=str, default="data")
+    parser.add_argument("-i", "--idir", type=str, default="data")
     parser.add_argument("-m", "--maxfiles", type=int, default=100)
-    parser.add_argument("-o", "--outfile", type=str, default="array.npz")
-    parser.add_argument("-c", "--outfile_comp", type=str, default="array_comp.npz")
+    parser.add_argument("-o", "--odir", type=str, default="../data_np")
     args = parser.parse_args()
 
     # load the list of log files under the given directory
     # iterate over files in that directory
-    files = sorted(os.listdir(args.dir))
+    files = sorted(os.listdir(args.idir))
+    all_files = []
     train_data_files = []
     for name in files:
-        f = os.path.join(args.dir, name)
+        f = os.path.join(args.idir, name)
         # checking if it is a file
         if os.path.isfile(f):
             train_data_files.append(f)
             if args.maxfiles > 0 and len(train_data_files) == args.maxfiles:
-                break
-    print(f"Files to load: {len(train_data_files)}")
+                all_files.append(train_data_files.copy())
+                # reset the list of train data files
+                train_data_files = []
 
-    observations = []
-    actions = []
-    terminals = []
-    with ProcessPoolExecutor() as executor:
-        futures = [executor.submit(process_file, filename) for filename in train_data_files]
-        for future in tqdm(as_completed(futures), desc="Loading MDP", unit="file"):
-            result = future.result()
-            observations_file, actions_file, terminals_file = result
-            observations.append(observations_file)
-            actions.append(actions_file)
-            terminals.append(terminals_file)
+    # add the last files
+    if len(train_data_files) > 0:
+        all_files.append(train_data_files)
 
-    observations = np.concatenate(observations)
-    actions = np.concatenate(actions)
-    terminals = np.concatenate(terminals)
+    print(f"Files to load: {len(files)}")
+    print(f"Divided into {len(all_files)} batches.")
 
     t1 = time.process_time()
-    np.savez(args.outfile, obs=observations, acts=actions, terms=terminals)
-    t2 = time.process_time()
-    print(f"Time for saving file: {t2 - t1}")
 
-    t1 = time.process_time()
-    np.savez_compressed(args.outfile_comp, obs=observations, acts=actions, terms=terminals)
-    t2 = time.process_time()
-    print(f"Time for saving compressed file: {t2-t1}")
+    counter = 0
+    for train_data_files in all_files:
+        observations = []
+        actions = []
+        terminals = []
+        # load data log and save it into .npz file
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(process_file, filename) for filename in train_data_files]
+            for future in tqdm(as_completed(futures), desc=f'Batch {counter+1} - Loading MDP', unit="file"):
+                result = future.result()
+                observations_file, actions_file, terminals_file = result
+                observations.append(observations_file)
+                actions.append(actions_file)
+                terminals.append(terminals_file)
 
-    t3 = time.process_time()
-    loaded = np.load(args.outfile)
-    t4 = time.process_time()
-    print(f"Time for loading file: {t4-t3}")
+        observations = np.concatenate(observations)
+        actions = np.concatenate(actions)
+        terminals = np.concatenate(terminals)
+        # create the file
+        f_name = '{:04d}'.format(counter)
+        f_o = open(f"{args.odir}/{f_name}.npz", 'wb')
+        np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals)
+        f_o.close()
+        # increase the counter
+        counter = counter + 1
+
+    t2 = time.process_time()
+    print(f"Time for converting data log files: {t2 - t1}")
 
 #    print(loaded['obs'][5])
 #    print(loaded['acts'][5])
 #    print(loaded['terms'][5])
-
-
 
 if __name__ == "__main__":
     main()
