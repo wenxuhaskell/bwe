@@ -6,10 +6,11 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from BweReward import RewardFunction
+from BweReward import RewardFunction, Feature, MI
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+
 
 def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
     try:
@@ -23,8 +24,9 @@ def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
         return None
     return data
 
+
 def load_train_data(
-    datafile: os.PathLike | str,
+        datafile: os.PathLike | str,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     data = load_data(datafile)
     if data is None:
@@ -44,11 +46,11 @@ def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarr
     # terminals are not used so they should be non 1.0
     terminals_file = np.zeros(len(observations_file))
     terminals_file[-1] = 1
-#    terminals_file = np.random.randint(2, size=len(observations_file))
+    #    terminals_file = np.random.randint(2, size=len(observations_file))
     return observations_file, actions_file, terminals_file
 
-def process_feature(feature: np.ndarray,
-                    dim: int) -> np.ndarray:
+def process_feature_pca(feature: np.ndarray,
+                        dim: int) -> np.ndarray:
     # scale the feature dataset
     scaling = StandardScaler()
     scaling.fit(feature)
@@ -60,6 +62,26 @@ def process_feature(feature: np.ndarray,
 
     return x
 
+
+def process_feature_average(feature: np.ndarray) -> np.ndarray:
+    # average the features
+    new_feature = []
+
+    for i in range(Feature.PROB_PKT_PROB):
+        ave_value_s = np.sum(feature[:, i * 10 + MI.SHORT_60 - 1 : i * 10 + MI.SHORT_300], axis=1)/5
+        ave_value_l = np.sum(feature[:, i * 10 + MI.LONG_600 - 1: i * 10 + MI.LONG_3000], axis=1)/5
+        new_feature.append(ave_value_s)
+        new_feature.append(ave_value_l)
+
+    new_feature = np.array(new_feature).transpose()
+    # scale the feature dataset
+#    scaling = StandardScaler()
+#    scaling.fit(new_feature)
+#    x = scaling.transform(new_feature)
+
+    return new_feature
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idir", type=str, default="data")
@@ -67,6 +89,7 @@ def main() -> None:
     parser.add_argument("-d", "--dim", type=int, default=8)
     parser.add_argument("-o", "--odir", type=str, default="../data_np_small")
     parser.add_argument("-r", "--rewardfunc", type=str, default="QOE_V1")
+    parser.add_argument("-a", "--algo", type=str, default="pca")
 
     args = parser.parse_args()
 
@@ -104,13 +127,16 @@ def main() -> None:
         # load data log and save it into .npz file
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(process_file, filename) for filename in train_data_files]
-            for future in tqdm(as_completed(futures), desc=f'Batch {counter+1} - Loading MDP', unit="file"):
+            for future in tqdm(as_completed(futures), desc=f'Batch {counter + 1} - Loading MDP', unit="file"):
                 result = future.result()
                 observations_file, actions_file, terminals_file = result
                 # calculate rewards
                 rewards_file = np.array([reward_func(o) for o in observations_file])
                 # PCA dimensionality reduction of the feature
-                observations_file = process_feature(observations_file, args.dim)
+                if args.algo.upper() == 'PCA':
+                    observations_file = process_feature_pca(observations_file, args.dim)
+                elif args.algo.upper() == 'AVE':
+                    observations_file = process_feature_average(observations_file)
                 # save all data from the single data log file
                 observations.append(observations_file)
                 actions.append(actions_file)
@@ -131,9 +157,10 @@ def main() -> None:
         # elapsed time
         t_end = time.process_time()
         print(f"Time (s) for converting data log file {f_name}.npz: {t_end - t_start}")
-        time_used = time_used + (t_end-t_start)
+        time_used = time_used + (t_end - t_start)
 
     print(f'Total time (s) used: {time_used}')
+
 
 if __name__ == "__main__":
     main()
