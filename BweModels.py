@@ -1,3 +1,4 @@
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import d3rlpy
@@ -48,14 +49,17 @@ class BweDrl:
         print(f"Logging folder {self._log_dir} is created.")
 
         for filename in train_data_files:
+            t1 = time.process_time()
             # load the file (.npz), fill the MDP dataset
             print(f"Load file {filename}.")
             loaded = np.load(filename, 'rb')
             observations = np.array(loaded['obs'])
             actions = np.array(loaded['acts'])
             terminals = np.array(loaded['terms'])
-            rewards = np.array([self._reward_func(o) for o in observations])
+            rewards = np.array(loaded['rws'])
+            #rewards = np.array([self._reward_func(o) for o in observations])
 
+            t2 = time.process_time()
             # create the offline learning dataset
             dataset = d3rlpy.dataset.MDPDataset(
                 observations=observations,
@@ -65,6 +69,7 @@ class BweDrl:
                 action_space=d3rlpy.ActionSpace.CONTINUOUS,
             )
             print("MDP dataset is created")
+            t3 = time.process_time()
 
             n_steps = len(observations)
             # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
@@ -81,6 +86,9 @@ class BweDrl:
                 logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
                 enable_ddp=self._ddp,
             )
+
+            t4 = time.process_time()
+            print(f'Time (s) statistics - load file: {t2-t1}, creating MDP ds: {t3-t2}, training: {t4-t3}')
 
             print(f"Saving the trained model.")
             policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
