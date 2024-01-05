@@ -47,13 +47,14 @@ def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarr
 #    terminals_file = np.random.randint(2, size=len(observations_file))
     return observations_file, actions_file, terminals_file
 
-def process_feature(feature: np.ndarray) -> np.ndarray:
+def process_feature(feature: np.ndarray,
+                    dim: int) -> np.ndarray:
     # scale the feature dataset
     scaling = StandardScaler()
     scaling.fit(feature)
     scaled_data = scaling.transform(feature)
     # dimensionality reduction using PCA
-    principal = PCA(n_components=8)
+    principal = PCA(n_components=dim)
     principal.fit(scaled_data)
     x = principal.transform(scaled_data)
 
@@ -63,6 +64,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idir", type=str, default="data")
     parser.add_argument("-m", "--maxfiles", type=int, default=20)
+    parser.add_argument("-d", "--dim", type=int, default=8)
     parser.add_argument("-o", "--odir", type=str, default="../data_np_small")
     parser.add_argument("-r", "--rewardfunc", type=str, default="QOE_V1")
 
@@ -108,7 +110,7 @@ def main() -> None:
                 # calculate rewards
                 rewards_file = np.array([reward_func(o) for o in observations_file])
                 # PCA dimensionality reduction of the feature
-                observations_file = process_feature(observations_file)
+                observations_file = process_feature(observations_file, args.dim)
                 # save all data from the single data log file
                 observations.append(observations_file)
                 actions.append(actions_file)
