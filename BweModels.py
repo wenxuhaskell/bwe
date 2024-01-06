@@ -46,7 +46,7 @@ class BweDrl:
         # create log folder
         start_date = datetime.now().strftime("%Y%m%d%H%M%S")
         self._log_dir = self._log_dir + "_" + start_date
-        print(f"Logging folder {self._log_dir} is created.")
+        print(f"Logging folder {self._log_dir} will be created.")
 
         for filename in train_data_files:
             t1 = time.process_time()
@@ -56,8 +56,10 @@ class BweDrl:
             observations = np.array(loaded['obs']).astype(np.float32)
             actions = np.array(loaded['acts']).astype(np.float32)
             terminals = np.array(loaded['terms'])
-            rewards = np.array(loaded['rws']).astype(np.float32)
-            #rewards = np.array([self._reward_func(o) for o in observations])
+            if 'rws' in loaded:
+                rewards = np.array(loaded['rws']).astype(np.float32)
+            else:
+                rewards = np.array([self._reward_func(o) for o in observations]).astype(np.float32)
 
             t2 = time.process_time()
             # create the offline learning dataset
