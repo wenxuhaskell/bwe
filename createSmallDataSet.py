@@ -165,7 +165,7 @@ def main() -> None:
         counter = counter + 1
         # elapsed time
         t_end = time.process_time()
-        print(f"Time (s) for converting data log file {f_name}.npz: {t_end - t_start}")
+        print(f"Time (s) for converting data log file {f_path}: {t_end - t_start}")
         time_used = time_used + (t_end - t_start)
 
     print(f'Total time (s) used: {time_used}')
