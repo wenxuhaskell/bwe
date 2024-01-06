@@ -53,10 +53,10 @@ class BweDrl:
             # load the file (.npz), fill the MDP dataset
             print(f"Load file {filename}.")
             loaded = np.load(filename, 'rb')
-            observations = np.array(loaded['obs'])
-            actions = np.array(loaded['acts'])
+            observations = np.array(loaded['obs']).astype(np.float32)
+            actions = np.array(loaded['acts']).astype(np.float32)
             terminals = np.array(loaded['terms'])
-            rewards = np.array(loaded['rws'])
+            rewards = np.array(loaded['rws']).astype(np.float32)
             #rewards = np.array([self._reward_func(o) for o in observations])
 
             t2 = time.process_time()
