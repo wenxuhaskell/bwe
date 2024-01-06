@@ -6,6 +6,8 @@ from d3rlpy.models.encoders import register_encoder_factory
 import numpy as np
 import onnxruntime as ort
 import os
+import pathlib
+import json
 from tqdm import tqdm
 
 from BweReward import RewardFunction
@@ -44,22 +46,34 @@ class BweDrl:
         print(f"Files to load: {len(train_data_files)}")
 
         # create log folder
-        start_date = datetime.now().strftime("%Y%m%d%H%M%S")
+        start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         self._log_dir = self._log_dir + "_" + start_date
         print(f"Logging folder {self._log_dir} will be created.")
+
+        observations = []
+        actions = []
+        rewards = []
+        terminals = []
 
         for filename in train_data_files:
             t1 = time.process_time()
             # load the file (.npz), fill the MDP dataset
-            print(f"Load file {filename}.")
-            loaded = np.load(filename, 'rb')
-            observations = np.array(loaded['obs']).astype(np.float32)
-            actions = np.array(loaded['acts']).astype(np.float32)
-            terminals = np.array(loaded['terms'])
-            if 'rws' in loaded:
-                rewards = np.array(loaded['rws']).astype(np.float32)
-            else:
-                rewards = np.array([self._reward_func(o) for o in observations]).astype(np.float32)
+            print(f"Load file {filename}...")
+            ext = pathlib.Path(filename).suffix
+            if ext.upper() == '.NPZ':
+                loaded = np.load(filename, 'rb')
+                observations = np.array(loaded['obs'])
+                actions = np.array(loaded['acts'])
+                terminals = np.array(loaded['terms'])
+                if 'rws' in loaded:
+                    rewards = np.array(loaded['rws'])
+                else:
+                    rewards = np.array([self._reward_func(o) for o in observations])
+            elif ext.upper() == '.JSON':
+                observations, actions, _, _ = load_train_data(filename)
+                rewards = np.array([self._reward_func(o) for o in observations])
+                terminals = np.zeros(len(observations))
+                terminals[-1] = 1
 
             t2 = time.process_time()
             # create the offline learning dataset
@@ -298,7 +312,7 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
@@ -331,7 +345,7 @@ def createSAC(params):
         initial_temperature=_initial_temperature,
         actor_encoder_factory=lstm_encoder_factory,
         critic_encoder_factory=lstm_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
@@ -369,7 +383,7 @@ def createBCQ(params):
         action_flexibility=_action_flexibility,
         beta=_beta,
         rl_start_step=_rl_start_step,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
@@ -407,7 +421,7 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])

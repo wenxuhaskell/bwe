@@ -11,7 +11,7 @@ def load_train_data(
     if data is None:
         return None
 
-    bandwidth_predictions = np.array(data['bandwidth_predictions'])
+    bandwidth_predictions = np.array(data['bandwidth_predictions']).astype(np.float32)
     observations = np.array(data['observations'])
     video_quality = np.array(data['video_quality'])
     audio_quality = np.array(data['audio_quality'])
