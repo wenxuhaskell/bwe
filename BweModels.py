@@ -1,3 +1,4 @@
+import random
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
@@ -41,8 +42,11 @@ class BweDrl:
             # checking if it is a file
             if os.path.isfile(f):
                 train_data_files.append(f)
-                if self._train_on_max_files > 0 and len(train_data_files) == self._train_on_max_files:
-                    break
+
+        # randomly select the specified amount of log files.
+        if self._train_on_max_files > 0 and len(train_data_files) > self._train_on_max_files:
+            train_data_files = random.sample(train_data_files, self._train_on_max_files)
+
         print(f"Files to load: {len(train_data_files)}")
 
         # create log folder
