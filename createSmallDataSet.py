@@ -119,6 +119,15 @@ def main() -> None:
     time_used = 0
     reward_func = RewardFunction(args.rewardfunc)
     for train_data_files in all_files:
+        # name for new log file
+        f_name = '{:04d}'.format(counter)
+        f_path = f'{args.odir}/{f_name}.npz'
+        # if the file already exists, skip generation.
+        if os.path.isfile(f_path):
+            print(f'{f_path} already exists, skip it!')
+            counter = counter + 1
+            continue
+
         t_start = time.process_time()
         observations = []
         actions = []
@@ -147,9 +156,9 @@ def main() -> None:
         actions = np.concatenate(actions)
         terminals = np.concatenate(terminals)
         rewards = np.concatenate(rewards)
+
         # create the file
-        f_name = '{:04d}'.format(counter)
-        f_o = open(f"{args.odir}/{f_name}.npz", 'wb')
+        f_o = open(f_path, 'wb')
         np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals, rws=rewards)
         f_o.close()
         # increase the counter
