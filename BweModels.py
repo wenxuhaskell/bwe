@@ -3,6 +3,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import d3rlpy
+from d3rlpy.metrics.evaluators import *
 from d3rlpy.models.encoders import register_encoder_factory
 import numpy as np
 import onnxruntime as ort
@@ -96,6 +97,7 @@ class BweDrl:
             n_steps_per_epoch = min(n_steps, 10000)
             print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
 
+            test_episodes = dataset.episodes[:3]
             # offline training
             self._algo.fit(
                 dataset,
@@ -104,6 +106,15 @@ class BweDrl:
                 experiment_name=f"experiment_{start_date}",
                 with_timestamp=False,
                 logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+                evaluators={
+                    # use them later for the evaluation now they took too much time
+                    'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                    'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                    'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                    'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
+                    'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+                },
+                save_interval=10,
                 enable_ddp=self._ddp,
             )
 
@@ -133,6 +144,7 @@ class BweDrl:
         self._log_dir = self._log_dir + "_" + start_date
         print("The latest trained model is placed under the log folder " + self._log_dir)
 
+        test_episodes = dataset[:3]
         # offline training
         self._algo.fit(
             dataset,
@@ -143,11 +155,11 @@ class BweDrl:
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
             evaluators={
                 # TODO: use them later for the evaluation now they took too much time
-                #'td_error': d3rlpy.metrics.TDErrorEvaluator(),
-                #'discounted_advantage': d3rlpy.evaluators.DiscountedSumOfAdvantageEvaluator(),
-                #'average_value': d3rlpy.evaluators.AverageValueEstimationEvaluator(),
-                #'soft_opc': d3rlpy.evaluators.SoftOPCEvaluator(),
-                #'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(),
+                'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
+                'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
             },
             save_interval=10,
             enable_ddp=self._ddp,
