@@ -16,7 +16,7 @@ class LSTMEncoder(nn.Module):
         # Initialize hidden state with zeros
         # batch_size, sequence length, input dimension
         inp = torch.relu(self.fc(inp))
-        hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0))
+        hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0), self.rnn_state)
         # detach?
         self.rnn_state = (rnn_state_undetached[0].detach(), rnn_state_undetached[1].detach())
         return torch.relu(hidden_output[:, -1, :])
@@ -35,7 +35,7 @@ class LSTMEncoderWithAction(nn.Module):
         # batch_size, sequence length, input dimension
         inp = torch.cat([inp, action], dim=1)
         inp = torch.relu(self.fc(inp))
-        hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0))
+        hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0), self.rnn_state)
         # detach?
         self.rnn_state = (rnn_state_undetached[0].detach(), rnn_state_undetached[1].detach())
         return torch.relu(hidden_output[:, -1, :])
