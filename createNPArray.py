@@ -62,7 +62,7 @@ def main() -> None:
         # checking if it is a file
         if os.path.isfile(f):
             train_data_files.append(f)
-            if args.maxfiles > 0 and len(train_data_files) == args.maxfiles:
+            if args.batchsize > 0 and len(train_data_files) == args.batchsize:
                 all_files.append(train_data_files.copy())
                 # reset the list of train data files
                 train_data_files = []
