@@ -107,7 +107,6 @@ class BweDrl:
                 with_timestamp=False,
                 logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
                 evaluators={
-                    # use them later for the evaluation now they took too much time
                     'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
                     'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
                     'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
@@ -124,8 +123,6 @@ class BweDrl:
             print(f"Saving the trained model.")
             policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
             self._algo.save_policy(policy_file_name)
-            model_file_name = self._log_dir + '/' + self._output_model_name + '.d3'
-            self._algo.save_model(model_file_name)
 
     def train_model(self):
         maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"
@@ -154,7 +151,6 @@ class BweDrl:
             with_timestamp=False,
             logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
             evaluators={
-                # TODO: use them later for the evaluation now they took too much time
                 'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
                 'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
                 'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),

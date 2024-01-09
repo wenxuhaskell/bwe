@@ -48,7 +48,7 @@ def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarr
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idir", type=str, default="data")
-    parser.add_argument("-m", "--maxfiles", type=int, default=100)
+    parser.add_argument("-b", "--batchsize", type=int, default=100)
     parser.add_argument("-o", "--odir", type=str, default="../data_np")
     args = parser.parse_args()
 

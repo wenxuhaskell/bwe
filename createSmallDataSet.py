@@ -85,7 +85,7 @@ def process_feature_average(feature: np.ndarray) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idir", type=str, default="data")
-    parser.add_argument("-m", "--maxfiles", type=int, default=20)
+    parser.add_argument("-b", "--batchsize", type=int, default=20)
     parser.add_argument("-d", "--dim", type=int, default=8)
     parser.add_argument("-o", "--odir", type=str, default="../data_np_small")
     parser.add_argument("-r", "--rewardfunc", type=str, default="QOE_V1")
