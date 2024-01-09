@@ -36,8 +36,13 @@ def main() -> None:
     f.close()
     # add device
     params['ddp'] = args.ddp
-    if 'device' not in params:
+    if args.ddp == True:
+        # get gpus for DDP training (overwrite the "device" parameter in json file)
         params['device'] = get_device(args.ddp)
+    else:
+        # otherwise (by default) use cpu for training
+        if 'device' not in params:
+            params['device'] = 'cpu'
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)
