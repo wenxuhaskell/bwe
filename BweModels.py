@@ -13,13 +13,14 @@ import json
 from tqdm import tqdm
 
 from BweReward import RewardFunction
-from BweUtils import load_train_data
+from BweUtils import load_train_data, create_mdp_dataset
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory
 
 
 class BweDrl:
     def __init__(self, params, algo: d3rlpy.algos.qlearning.QLearningAlgoBase):
+        self._params = params
         self._log_dir = params['logFolderName']
         self._train_data_dir = params['trainDataFolder']
         self._test_data_dir = params['testDataFolder']
@@ -34,95 +35,48 @@ class BweDrl:
         register_encoder_factory(LSTMEncoderFactory)
 
     def train_model_gradually(self):
-        # load the list of log files under the given directory
-        # iterate over files in that directory
-        files = sorted(os.listdir(self._train_data_dir))
-        train_data_files = []
-        for name in files:
-            f = os.path.join(self._train_data_dir, name)
-            # checking if it is a file
-            if os.path.isfile(f):
-                train_data_files.append(f)
 
-        # randomly select the specified amount of log files.
-        if self._train_on_max_files > 0 and len(train_data_files) > self._train_on_max_files:
-            train_data_files = random.sample(train_data_files, self._train_on_max_files)
-
-        print(f"Files to load: {len(train_data_files)}")
+        print("Creating MDP dataset...")
+        t1 = time.process_time()
+        dataset = create_mdp_dataset(self._train_data_dir, self._train_on_max_files, self._reward_func)
+        t2 = time.process_time()
+        print(f"MDP dataset is created using {t2-t1} s.")
 
         # create log folder
         start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         self._log_dir = self._log_dir + "_" + start_date
         print(f"Logging folder {self._log_dir} will be created.")
 
-        observations = []
-        actions = []
-        rewards = []
-        terminals = []
+        test_episodes = dataset.episodes[:3]
+        n_steps = len(test_episodes[0].observations)
+        #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
+        n_steps_per_epoch = min(n_steps, 10000)
+        print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
 
-        for filename in train_data_files:
-            t1 = time.process_time()
-            # load the file (.npz), fill the MDP dataset
-            print(f"Load file {filename}...")
-            ext = pathlib.Path(filename).suffix
-            if ext.upper() == '.NPZ':
-                loaded = np.load(filename, 'rb')
-                observations = np.array(loaded['obs'])
-                actions = np.array(loaded['acts'])
-                terminals = np.array(loaded['terms'])
-                if 'rws' in loaded:
-                    rewards = np.array(loaded['rws'])
-                else:
-                    rewards = np.array([self._reward_func(o) for o in observations])
-            elif ext.upper() == '.JSON':
-                observations, actions, _, _ = load_train_data(filename)
-                rewards = np.array([self._reward_func(o) for o in observations])
-                terminals = np.zeros(len(observations))
-                terminals[-1] = 1
+        # offline training
+        self._algo.fit(
+            dataset,
+            n_steps=n_steps,
+            n_steps_per_epoch=n_steps_per_epoch,
+            experiment_name=f"experiment_{start_date}",
+            with_timestamp=False,
+            logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+            evaluators={
+                'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
+                'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+            },
+            save_interval=10,
+            enable_ddp=self._ddp,
+        )
+        t3 = time.process_time()
+        print(f'Time (s) statistics - training: {t3-t2}')
 
-            t2 = time.process_time()
-            # create the offline learning dataset
-            dataset = d3rlpy.dataset.MDPDataset(
-                observations=observations,
-                actions=actions,
-                rewards=rewards,
-                terminals=terminals,
-                action_space=d3rlpy.ActionSpace.CONTINUOUS,
-            )
-            print("MDP dataset is created")
-            t3 = time.process_time()
-
-            n_steps = len(observations)
-            # FIXME: tune it? 10000 is the default value for all Q-learning algorithms but maybe it is too big?
-            n_steps_per_epoch = min(n_steps, 10000)
-            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
-
-            test_episodes = dataset.episodes[:3]
-            # offline training
-            self._algo.fit(
-                dataset,
-                n_steps=n_steps,
-                n_steps_per_epoch=n_steps_per_epoch,
-                experiment_name=f"experiment_{start_date}",
-                with_timestamp=False,
-                logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-                evaluators={
-                    'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                    'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                    'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                    'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
-                    'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-                },
-                save_interval=10,
-                enable_ddp=self._ddp,
-            )
-
-            t4 = time.process_time()
-            print(f'Time (s) statistics - load file: {t2-t1}, creating MDP ds: {t3-t2}, training: {t4-t3}')
-
-            print(f"Saving the trained model.")
-            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
-            self._algo.save_policy(policy_file_name)
+        print(f"Saving the trained model.")
+        policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+        self._algo.save_policy(policy_file_name)
 
     def train_model(self):
         maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"
