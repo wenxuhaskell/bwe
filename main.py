@@ -10,18 +10,17 @@ import BweModels
 
 def get_device(is_ddp: bool = False) -> str:
     is_cuda = torch.cuda.is_available()
+    world_size = dist.get_world_size() if is_ddp else 1
+
     if is_cuda:
         rank = d3rlpy.distributed.init_process_group("nccl") if is_ddp else 0
         device = f"cuda:{rank}"
-        print(
-            f"Training on {device} device with rank {dist.get_rank() if is_ddp else 0} and world_size"
-            f" {dist.get_world_size() if is_ddp else 0}..."
-        )
     else:
         rank = 0
         device = "cpu:0"
-        print(f"Training on {device} device...")
-    return device
+
+    print(f"Training on {device} with rank {rank} and world_size {world_size}")
+    return device, rank, world_size
 
 
 def main() -> None:
@@ -36,13 +35,8 @@ def main() -> None:
     f.close()
     # add device
     params['ddp'] = args.ddp
-    if args.ddp == True:
-        # get gpus for DDP training (overwrite the "device" parameter in json file)
-        params['device'] = get_device(args.ddp)
-    else:
-        # otherwise (by default) use cpu for training
-        if 'device' not in params:
-            params['device'] = 'cpu'
+    # get devices for training (overwrite the "device" parameter in json file)
+    params['device'], params['rank'], params['world_size'] = get_device(args.ddp)
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)
