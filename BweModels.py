@@ -39,7 +39,6 @@ class BweDrl:
     def train_model_gradually(self):
 
         datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
-        print(f"To load {len(datafiles)} files.")
 
         partial_datafiles = datafiles
         # divide datafiles
@@ -52,6 +51,8 @@ class BweDrl:
                 partial_datafiles = datafiles[start:]
             else:
                 partial_datafiles = datafiles[start:end]
+
+        print(f"Worker {self._rank} will load {len(partial_datafiles)} files.")
 
         # name of log folder
         start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
