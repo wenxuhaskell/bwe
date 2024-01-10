@@ -49,6 +49,7 @@ class BweDrl:
 
         test_episodes = dataset.episodes[:3]
         n_steps = len(test_episodes[0].observations)
+        n_steps = 10
         #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
         n_steps_per_epoch = min(n_steps, 10000)
         print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")

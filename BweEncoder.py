@@ -9,7 +9,7 @@ class LSTMEncoder(nn.Module):
         super().__init__()
         self.feature_size = feature_size
         self.fc = nn.Linear(observation_shape[0], 128)
-        self.lstm = nn.LSTM(128, feature_size, num_layers=1)
+        self.lstm = nn.LSTM(128, feature_size)
         self.rnn_state = (torch.zeros(1, 1, 1).requires_grad_(), torch.zeros(1, 1, 1).requires_grad_())
 
     def forward(self, inp, h=None, c=None):
@@ -27,7 +27,7 @@ class LSTMEncoderWithAction(nn.Module):
         super().__init__()
         self.feature_size = feature_size
         self.fc = nn.Linear(observation_shape[0] + action_size, 128)
-        self.lstm = nn.LSTM(128, feature_size, num_layers=1)
+        self.lstm = nn.LSTM(128, feature_size)
         self.rnn_state = (torch.zeros(1, 1, 1).requires_grad_(), torch.zeros(1, 1, 1).requires_grad_())
 
     def forward(self, inp, action, h=None, c=None):
@@ -35,6 +35,7 @@ class LSTMEncoderWithAction(nn.Module):
         # batch_size, sequence length, input dimension
         inp = torch.cat([inp, action], dim=1)
         inp = torch.relu(self.fc(inp))
+
         hidden_output, rnn_state_undetached = self.lstm(inp.unsqueeze(dim=0), self.rnn_state)
         # detach?
         self.rnn_state = (rnn_state_undetached[0].detach(), rnn_state_undetached[1].detach())
