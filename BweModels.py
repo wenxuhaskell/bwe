@@ -48,7 +48,10 @@ class BweDrl:
             num_files_per_worker = num_files // self._world_size
             start = self._rank * num_files_per_worker
             end = (self._rank + 1) * num_files_per_worker
-            partial_datafiles = d3rlpy.dataset.create_infinite_replay_buffer(datafiles[start:end])
+            if self._rank +1 == self._world_size:
+                partial_datafiles = datafiles[start:]
+            else:
+                partial_datafiles = datafiles[start:end]
 
         # name of log folder
         start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
