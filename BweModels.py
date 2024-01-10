@@ -30,11 +30,18 @@ class BweDrl:
         self._reward_func = RewardFunction(params['rewardFuncName'])
         self._device = params['device']
         self._ddp = params['ddp']
+        self._rank = params['rank']
+        self._world_size = params['world_size']
 
         # register your own encoder factory
         register_encoder_factory(LSTMEncoderFactory)
 
     def train_model_gradually(self):
+
+        # name of log folder
+        start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        self._log_dir = self._log_dir + "_" + start_date
+        print(f"Logging folder {self._log_dir} will be created.")
 
         print("Creating MDP dataset...")
         t1 = time.process_time()
@@ -42,33 +49,44 @@ class BweDrl:
         t2 = time.process_time()
         print(f"MDP dataset is created using {t2-t1} s.")
 
-        # create log folder
-        start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        self._log_dir = self._log_dir + "_" + start_date
-        print(f"Logging folder {self._log_dir} will be created.")
+        partial_dataset = dataset
+        # divide dataset
+        if self._world_size > 1:
+            num_episodes = len(dataset.episodes)
+            num_episodes_per_worker = num_episodes // self._world_size
+            start = self._rank * num_episodes_per_worker
+            end = (self._rank + 1) * num_episodes_per_worker
+            partial_dataset = d3rlpy.dataset.create_infinite_replay_buffer(dataset.episodes[start:end])
 
-        test_episodes = dataset.episodes[:3]
+        test_episodes = partial_dataset.episodes[:1]
+        if self._rank == 0:
+            bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
+            bwe_eval = {
+                'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
+                'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+            }
+        else:
+            bwe_logger = d3rlpy.logging.NoopAdapterFactory()
+            bwe_eval = {}
+
         n_steps = len(test_episodes[0].observations)
-#        n_steps = 10
+        #        n_steps = 10
         #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
         n_steps_per_epoch = min(n_steps, 10000)
         print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
 
         # offline training
         self._algo.fit(
-            dataset,
+            partial_dataset,
             n_steps=n_steps,
             n_steps_per_epoch=n_steps_per_epoch,
             experiment_name=f"experiment_{start_date}",
             with_timestamp=False,
-            logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-            evaluators={
-                'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
-                'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-            },
+            logger_adapter=bwe_logger,
+            evaluators=bwe_eval,
             save_interval=10,
             enable_ddp=self._ddp,
         )
