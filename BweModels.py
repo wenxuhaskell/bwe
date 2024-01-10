@@ -13,7 +13,7 @@ import json
 from tqdm import tqdm
 
 from BweReward import RewardFunction
-from BweUtils import load_train_data, create_mdp_dataset
+from BweUtils import load_train_data, load_multiple_files, create_mdp_dataset_from_files
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory
 
@@ -38,27 +38,30 @@ class BweDrl:
 
     def train_model_gradually(self):
 
+        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
+        print(f"To load {len(datafiles)} files.")
+
+        partial_datafiles = datafiles
+        # divide datafiles
+        if self._world_size > 1:
+            num_files = len(datafiles)
+            num_files_per_worker = num_files // self._world_size
+            start = self._rank * num_files_per_worker
+            end = (self._rank + 1) * num_files_per_worker
+            partial_datafiles = d3rlpy.dataset.create_infinite_replay_buffer(datafiles[start:end])
+
         # name of log folder
         start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         self._log_dir = self._log_dir + "_" + start_date
         print(f"Logging folder {self._log_dir} will be created.")
 
-        print("Creating MDP dataset...")
+        print(f"Worker {self._rank} starts creating MDP dataset...")
         t1 = time.process_time()
-        dataset = create_mdp_dataset(self._train_data_dir, self._train_on_max_files, self._reward_func)
+        dataset = create_mdp_dataset_from_files(partial_datafiles, self._reward_func)
         t2 = time.process_time()
-        print(f"MDP dataset is created using {t2-t1} s.")
+        print(f"Worker {self._rank} finishes with creating MDP dataset - {t2-t1} s.")
 
-        partial_dataset = dataset
-        # divide dataset
-        if self._world_size > 1:
-            num_episodes = len(dataset.episodes)
-            num_episodes_per_worker = num_episodes // self._world_size
-            start = self._rank * num_episodes_per_worker
-            end = (self._rank + 1) * num_episodes_per_worker
-            partial_dataset = d3rlpy.dataset.create_infinite_replay_buffer(dataset.episodes[start:end])
-
-        test_episodes = partial_dataset.episodes[:1]
+        test_episodes = dataset.episodes[:1]
         if self._rank == 0:
             bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
             bwe_eval = {
@@ -80,7 +83,7 @@ class BweDrl:
 
         # offline training
         self._algo.fit(
-            partial_dataset,
+            dataset,
             n_steps=n_steps,
             n_steps_per_epoch=n_steps_per_epoch,
             experiment_name=f"experiment_{start_date}",
@@ -91,9 +94,9 @@ class BweDrl:
             enable_ddp=self._ddp,
         )
         t3 = time.process_time()
-        print(f'Time (s) statistics - training: {t3-t2}')
+        print(f'Worker {self._rank} training time: {t3-t2} s')
 
-        print(f"Saving the trained model.")
+        print(f"Worker {self._rank} saves the trained model.")
         policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
         self._algo.save_policy(policy_file_name)
 
