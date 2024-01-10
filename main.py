@@ -10,11 +10,11 @@ import BweModels
 
 def get_device(is_ddp: bool = False) -> str:
     is_cuda = torch.cuda.is_available()
-    world_size = dist.get_world_size() if is_ddp else 1
-
+    world_size = 1
     if is_cuda:
         rank = d3rlpy.distributed.init_process_group("nccl") if is_ddp else 0
         device = f"cuda:{rank}"
+        world_size = dist.get_world_size() if is_ddp else 1
     else:
         rank = 0
         device = "cpu:0"
