@@ -21,13 +21,15 @@ from BweEncoder import LSTMEncoderFactory
 class BweDrl:
     def __init__(self, params, algo: d3rlpy.algos.qlearning.QLearningAlgoBase):
         self._params = params
-        self._log_dir = params['logFolderName']
-        self._train_data_dir = params['trainDataFolder']
-        self._test_data_dir = params['testDataFolder']
-        self._train_on_max_files = params['trainOnMaxFiles']
-        self._output_model_name = params['outputModelName']
+        self._log_dir = params['log_folder_name']
+        self._train_data_dir = params['train_data_folder']
+        self._test_data_dir = params['test_data_folder']
+        self._train_on_max_files = params['train_on_max_files']
+        self._output_model_name = params['output_model_name']
+        self._n_steps = params['n_steps']
+        self._n_steps_per_epoch = params['n_steps_per_epoch']
         self._algo = algo
-        self._reward_func = RewardFunction(params['rewardFuncName'])
+        self._reward_func = RewardFunction(params['reward_func_name'])
         self._device = params['device']
         self._ddp = params['ddp']
         self._rank = params['rank']
@@ -75,17 +77,13 @@ class BweDrl:
                 bwe_logger = d3rlpy.logging.NoopAdapterFactory()
                 bwe_eval = {}
 
-            n_steps = len(test_episodes[0].observations)
-            #        n_steps = 10
-            #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
-            n_steps_per_epoch = min(n_steps, 10000)
-            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {partial_dataset.size()} episodes")
+            print(f"Training on {self._n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {partial_dataset.size()} episodes")
 
             # offline training
             self._algo.fit(
                 partial_dataset,
-                n_steps=n_steps,
-                n_steps_per_epoch=n_steps_per_epoch,
+                n_steps=self._n_steps,
+                n_steps_per_epoch=self._n_steps_per_epoch,
                 experiment_name=f"experiment_{start_date}",
                 with_timestamp=False,
                 logger_adapter=bwe_logger,

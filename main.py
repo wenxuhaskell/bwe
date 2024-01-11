@@ -38,14 +38,17 @@ def main() -> None:
     # get devices for training (overwrite the "device" parameter in json file)
     if 'device' not in params:
         params['device'], params['rank'], params['world_size'] = get_device(args.ddp)
+    else:
+        params['rank'] = 0
+        params['world_size'] = 0
 
-    if params['algorithmName'] == 'CQL':
+    if params['algorithm_name'] == 'CQL':
         algo = BweModels.createCQL(params)
-    elif params['algorithmName'] == "SAC":
+    elif params['algorithm_name'] == "SAC":
         algo = BweModels.createSAC(params)
-    elif params['algorithmName'] == "BCQ":
+    elif params['algorithm_name'] == "BCQ":
         algo = BweModels.createBCQ(params)
-    elif params['algorithmName'] == "DT":
+    elif params['algorithm_name'] == "DT":
         algo = BweModels.createDT(params)
     else:
         print("Please provide a configuration file with a valid algorithm name!\n")
