@@ -33,6 +33,8 @@ def main() -> None:
     f = open(args.conf, "r")
     params = json.load(f)
     f.close()
+    
+    ##
     # add device
     params['ddp'] = args.ddp
     # get devices for training (overwrite the "device" parameter in json file)
