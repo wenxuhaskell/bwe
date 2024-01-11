@@ -36,7 +36,8 @@ def main() -> None:
     # add device
     params['ddp'] = args.ddp
     # get devices for training (overwrite the "device" parameter in json file)
-    params['device'], params['rank'], params['world_size'] = get_device(args.ddp)
+    if 'device' not in params:
+        params['device'], params['rank'], params['world_size'] = get_device(args.ddp)
 
     if params['algorithmName'] == 'CQL':
         algo = BweModels.createCQL(params)
@@ -58,7 +59,7 @@ def main() -> None:
     if False:
         bwe.evaluate_model_offline()
 
-    if params['ddp'] == True:
+    if params['ddp'] == True and torch.cuda.is_available():
         print("DDP finishes.")
         d3rlpy.distributed.destroy_process_group()
 

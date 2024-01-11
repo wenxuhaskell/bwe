@@ -79,11 +79,11 @@ class BweDrl:
             #        n_steps = 10
             #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
             n_steps_per_epoch = min(n_steps, 10000)
-            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
+            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {partial_dataset.size()} episodes")
 
             # offline training
             self._algo.fit(
-                dataset,
+                partial_dataset,
                 n_steps=n_steps,
                 n_steps_per_epoch=n_steps_per_epoch,
                 experiment_name=f"experiment_{start_date}",
