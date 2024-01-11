@@ -164,3 +164,30 @@ def create_mdp_dataset_from_file(train_data_file, rw_func)\
     )
 
     return dataset
+
+
+def load_train_data_from_file(train_data_file, rw_func)\
+        -> d3rlpy.dataset.MDPDataset:
+
+    observations_file = []
+    actions_file = []
+    rewards_file = []
+    terminals_file = []
+    print(f"Load file {train_data_file}...")
+    ext = pathlib.Path(train_data_file).suffix
+    if ext.upper() == '.NPZ':
+        loaded = np.load(train_data_file, 'rb')
+        observations_file = np.array(loaded['obs'])
+        actions_file = np.array(loaded['acts'])
+        terminals_file = np.array(loaded['terms'])
+        if 'rws' in loaded:
+            rewards_file = np.array(loaded['rws'])
+        else:
+            rewards_file = np.array([rw_func(o) for o in observations_file])
+    elif ext.upper() == '.JSON':
+        observations_file, actions_file, _, _ = load_train_data(train_data_file)
+        rewards_file = np.array([rw_func(o) for o in observations_file])
+        terminals_file = np.zeros(len(observations_file))
+        terminals_file[-1] = 1
+
+    return observations_file, actions_file, rewards_file, terminals_file
