@@ -42,7 +42,7 @@ def main() -> None:
         params['device'], params['rank'], params['world_size'] = get_device(args.ddp)
     else:
         params['rank'] = 0
-        params['world_size'] = 0
+        params['world_size'] = 1
 
     if params['algorithm_name'] == 'CQL':
         algo = BweModels.createCQL(params)

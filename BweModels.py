@@ -8,6 +8,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 import numpy as np
 import onnxruntime as ort
 import os
+import math
 import pathlib
 import json
 from tqdm import tqdm
@@ -26,8 +27,9 @@ class BweDrl:
         self._test_data_dir = params['test_data_folder']
         self._train_on_max_files = params['train_on_max_files']
         self._output_model_name = params['output_model_name']
-        self._n_steps = params['n_steps']
+        self._batch_size = params['batch_size']
         self._n_steps_per_epoch = params['n_steps_per_epoch']
+        self._dataset_coverage = params['dataset_coverage']
         self._algo = algo
         self._reward_func = RewardFunction(params['reward_func_name'])
         self._device = params['device']
@@ -41,6 +43,12 @@ class BweDrl:
     def train_model_gradually(self):
 
         datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
+
+        if self._rank == 0:
+            # name of log folder
+            start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            self._log_dir = self._log_dir + "_" + start_date
+            print(f"Worker {self._rank} logging folder {self._log_dir} will be created.")
 
         for filename in datafiles:
             print(f"Worker {self._rank} starts creating MDP dataset...")
@@ -68,45 +76,47 @@ class BweDrl:
             t2 = time.process_time()
             print(f"Worker {self._rank} finishes with creating MDP dataset - {t2-t1} s.")
 
-            # name of log folder
-            start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            self._log_dir = self._log_dir + "_" + start_date
-            print(f"Logging folder {self._log_dir} will be created.")
+            n_steps = math.floor(dataset.transition_count*self._dataset_coverage // self._batch_size)
+            n_steps = min(n_steps, 10000)
+            print(f"Worker {self._rank} train {n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.transition_count} records")
 
             test_episodes = dataset.episodes[:1]
             if self._rank == 0:
-                bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
-                bwe_eval = {
-                    'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                    'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                    'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                    'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
-                    'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-                }
+                # offline training
+                self._algo.fit(
+                    dataset,
+                    n_steps=n_steps,
+                    n_steps_per_epoch=self._n_steps_per_epoch,
+                    experiment_name=f"experiment_{start_date}",
+                    with_timestamp=False,
+                    logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+                    evaluators={
+                        'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                        'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                        'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                        'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+                    },
+                    save_interval=10,
+                    enable_ddp=self._ddp,
+                )
             else:
-                bwe_logger = d3rlpy.logging.NoopAdapterFactory()
-                bwe_eval = {}
+                # offline training
+                self._algo.fit(
+                    dataset,
+                    n_steps=n_steps,
+                    n_steps_per_epoch=self._n_steps_per_epoch,
+                    with_timestamp=False,
+                    logger_adapter=d3rlpy.logging.NoopAdapterFactory(),
+                    evaluators={},
+                    enable_ddp=self._ddp,
+                )
 
-            print(f"Training on {self._n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
-
-            # offline training
-            self._algo.fit(
-                dataset,
-                n_steps=self._n_steps,
-                n_steps_per_epoch=self._n_steps_per_epoch,
-                experiment_name=f"experiment_{start_date}",
-                with_timestamp=False,
-                logger_adapter=bwe_logger,
-                evaluators=bwe_eval,
-                save_interval=10,
-                enable_ddp=self._ddp,
-            )
             t3 = time.process_time()
             print(f'Worker {self._rank} training time: {t3-t2} s')
 
-            print(f"Worker {self._rank} saves the trained model. Train data file {filename}")
-            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
-            self._algo.save_policy(policy_file_name)
+#            print(f"Worker {self._rank} saves the trained model. Train data file {filename}")
+#            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+#            self._algo.save_policy(policy_file_name)
 
     def train_model(self):
         maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"
@@ -145,8 +155,8 @@ class BweDrl:
             enable_ddp=self._ddp,
         )
 
-        policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
-        self._algo.save_policy(policy_file_name)
+#        policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+#        self._algo.save_policy(policy_file_name)
 
     def create_mdp_dataset(self, save_name: str | None = None) -> d3rlpy.dataset.MDPDataset:
         files = sorted(os.listdir(self._train_data_dir))

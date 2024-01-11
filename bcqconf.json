@@ -15,12 +15,12 @@
   "gamma": 0.99,
   "lam":0.75,
   "batch_size": 64,
-  "n_steps": 3000,
-  "n_steps_per_epoch": 50,
+  "dataset_coverage": 0.8,
+  "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0001,
   "imitator_learning_rate": 0.0001,
   "action_flexibility": 0.05,
-   "rl_start_step": 0,
+  "rl_start_step": 0,
   "device": "cpu:0"
 }
