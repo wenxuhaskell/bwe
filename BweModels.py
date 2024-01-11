@@ -54,14 +54,14 @@ class BweDrl:
                 num_episodes_per_worker = num_episodes // self._world_size
                 start = self._rank * num_episodes_per_worker
                 end = (self._rank + 1) * num_episodes_per_worker
-                partial_dataset = d3rlpy.dataset.create_infinite_replay_buffer(dataset[start:end])
+                partial_dataset = d3rlpy.dataset.create_infinite_replay_buffer(dataset.episodes[start:end])
 
             # name of log folder
             start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             self._log_dir = self._log_dir + "_" + start_date
             print(f"Logging folder {self._log_dir} will be created.")
 
-            test_episodes = dataset.episodes[:1]
+            test_episodes = partial_dataset.episodes[:1]
             if self._rank == 0:
                 bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
                 bwe_eval = {
