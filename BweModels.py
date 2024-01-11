@@ -13,7 +13,7 @@ import json
 from tqdm import tqdm
 
 from BweReward import RewardFunction
-from BweUtils import load_train_data, load_multiple_files, create_mdp_dataset_from_files
+from BweUtils import load_train_data, load_multiple_files, create_mdp_dataset_from_file
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory
 
@@ -40,69 +40,65 @@ class BweDrl:
 
         datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
 
-        partial_datafiles = datafiles
-        # divide datafiles
-        if self._world_size > 1:
-            num_files = len(datafiles)
-            num_files_per_worker = num_files // self._world_size
-            start = self._rank * num_files_per_worker
-            end = (self._rank + 1) * num_files_per_worker
-            if self._rank +1 == self._world_size:
-                partial_datafiles = datafiles[start:]
+        for filename in datafiles:
+            print(f"Worker {self._rank} starts creating MDP dataset...")
+            t1 = time.process_time()
+            dataset = create_mdp_dataset_from_file(filename, self._reward_func)
+            t2 = time.process_time()
+            print(f"Worker {self._rank} finishes with creating MDP dataset - {t2-t1} s.")
+
+            partial_dataset = dataset
+            # divide dataset
+            if self._world_size > 1:
+                num_episodes = len(dataset.episodes)
+                num_episodes_per_worker = num_episodes // self._world_size
+                start = self._rank * num_episodes_per_worker
+                end = (self._rank + 1) * num_episodes_per_worker
+                partial_dataset = d3rlpy.dataset.create_infinite_replay_buffer(dataset[start:end])
+
+            # name of log folder
+            start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            self._log_dir = self._log_dir + "_" + start_date
+            print(f"Logging folder {self._log_dir} will be created.")
+
+            test_episodes = dataset.episodes[:1]
+            if self._rank == 0:
+                bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
+                bwe_eval = {
+                    'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                    'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                    'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                    'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
+                    'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+                }
             else:
-                partial_datafiles = datafiles[start:end]
+                bwe_logger = d3rlpy.logging.NoopAdapterFactory()
+                bwe_eval = {}
 
-        print(f"Worker {self._rank} will load {len(partial_datafiles)} files.")
+            n_steps = len(test_episodes[0].observations)
+            #        n_steps = 10
+            #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
+            n_steps_per_epoch = min(n_steps, 10000)
+            print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
 
-        # name of log folder
-        start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        self._log_dir = self._log_dir + "_" + start_date
-        print(f"Logging folder {self._log_dir} will be created.")
+            # offline training
+            self._algo.fit(
+                dataset,
+                n_steps=n_steps,
+                n_steps_per_epoch=n_steps_per_epoch,
+                experiment_name=f"experiment_{start_date}",
+                with_timestamp=False,
+                logger_adapter=bwe_logger,
+                evaluators=bwe_eval,
+                save_interval=10,
+                enable_ddp=self._ddp,
+            )
+            t3 = time.process_time()
+            print(f'Worker {self._rank} training time: {t3-t2} s')
 
-        print(f"Worker {self._rank} starts creating MDP dataset...")
-        t1 = time.process_time()
-        dataset = create_mdp_dataset_from_files(partial_datafiles, self._reward_func)
-        t2 = time.process_time()
-        print(f"Worker {self._rank} finishes with creating MDP dataset - {t2-t1} s.")
-
-        test_episodes = dataset.episodes[:1]
-        if self._rank == 0:
-            bwe_logger = BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name)
-            bwe_eval = {
-                'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                'soft_opc': d3rlpy.metrics.evaluators.SoftOPCEvaluator(2),
-                'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-            }
-        else:
-            bwe_logger = d3rlpy.logging.NoopAdapterFactory()
-            bwe_eval = {}
-
-        n_steps = len(test_episodes[0].observations)
-        #        n_steps = 10
-        #  10000 is the default value for all Q-learning algorithms but maybe it is too big?
-        n_steps_per_epoch = min(n_steps, 10000)
-        print(f"Training on {n_steps} steps, {n_steps_per_epoch} steps per epoch for {dataset.size()} episodes")
-
-        # offline training
-        self._algo.fit(
-            dataset,
-            n_steps=n_steps,
-            n_steps_per_epoch=n_steps_per_epoch,
-            experiment_name=f"experiment_{start_date}",
-            with_timestamp=False,
-            logger_adapter=bwe_logger,
-            evaluators=bwe_eval,
-            save_interval=10,
-            enable_ddp=self._ddp,
-        )
-        t3 = time.process_time()
-        print(f'Worker {self._rank} training time: {t3-t2} s')
-
-        print(f"Worker {self._rank} saves the trained model.")
-        policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
-        self._algo.save_policy(policy_file_name)
+            print(f"Worker {self._rank} saves the trained model. Train data file {filename}")
+            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
+            self._algo.save_policy(policy_file_name)
 
     def train_model(self):
         maybe_dataset_path = f"datasets/dataset_{self._train_on_max_files}.h5"

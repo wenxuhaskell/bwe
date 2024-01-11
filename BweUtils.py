@@ -68,12 +68,12 @@ def load_multiple_files(train_data_dir: str,train_on_max_files: int):
     for name in files:
         f = os.path.join(train_data_dir, name)
         # checking if it is a file
-        if os.path.isfile(f):
+        if os.path.isfile(f) and len(train_data_files) < train_on_max_files:
             train_data_files.append(f)
 
     # randomly select the specified amount of log files.
-    if 0 < train_on_max_files < len(train_data_files):
-        train_data_files = random.sample(train_data_files, train_on_max_files)
+#    if 0 < train_on_max_files < len(train_data_files):
+#        train_data_files = random.sample(train_data_files, train_on_max_files)
 
     print(f"Files to load: {len(train_data_files)}")
     return train_data_files
@@ -124,6 +124,42 @@ def create_mdp_dataset_from_files(train_data_files, rw_func)\
         actions=actions,
         rewards=rewards,
         terminals=terminals,
+        action_space=d3rlpy.ActionSpace.CONTINUOUS,
+    )
+
+    return dataset
+
+
+def create_mdp_dataset_from_file(train_data_file, rw_func)\
+        -> d3rlpy.dataset.MDPDataset:
+
+    observations_file = []
+    actions_file = []
+    rewards_file = []
+    terminals_file = []
+    print(f"Load file {train_data_file}...")
+    ext = pathlib.Path(train_data_file).suffix
+    if ext.upper() == '.NPZ':
+        loaded = np.load(train_data_file, 'rb')
+        observations_file = np.array(loaded['obs'])
+        actions_file = np.array(loaded['acts'])
+        terminals_file = np.array(loaded['terms'])
+        if 'rws' in loaded:
+            rewards_file = np.array(loaded['rws'])
+        else:
+            rewards_file = np.array([rw_func(o) for o in observations_file])
+    elif ext.upper() == '.JSON':
+        observations_file, actions_file, _, _ = load_train_data(train_data_file)
+        rewards_file = np.array([rw_func(o) for o in observations_file])
+        terminals_file = np.zeros(len(observations_file))
+        terminals_file[-1] = 1
+
+    # create the offline learning dataset
+    dataset = d3rlpy.dataset.MDPDataset(
+        observations=observations_file,
+        actions=actions_file,
+        rewards=rewards_file,
+        terminals=terminals_file,
         action_space=d3rlpy.ActionSpace.CONTINUOUS,
     )
 

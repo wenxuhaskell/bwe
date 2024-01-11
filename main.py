@@ -59,6 +59,7 @@ def main() -> None:
         bwe.evaluate_model_offline()
 
     if params['ddp'] == True:
+        print("DDP finishes.")
         d3rlpy.distributed.destroy_process_group()
 
 
