@@ -53,7 +53,10 @@ class BweDrl:
         for filename in datafiles:
             print(f"Worker {self._rank} starts creating MDP dataset...")
             t1 = time.process_time()
-            observations, actions, rewards, terminals = load_train_data_from_file(filename, self._reward_func)
+            observations, actions, rewards, terminals = load_train_data_from_file(filename)
+            # calculate rewards if needed
+            if not rewards:
+                rewards = np.array([self._reward_func(o) for o in observations])
 
             start = 0
             end = len(actions)

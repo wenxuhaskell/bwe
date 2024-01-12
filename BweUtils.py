@@ -62,8 +62,9 @@ def get_decay_weights(num_weights: int, start_weight: float = 0.4, ratio: float 
     return weights
 
 
-def load_multiple_files(train_data_dir: str,train_on_max_files: int):
+def load_multiple_files(train_data_dir: str, train_on_max_files: int):
     files = sorted(os.listdir(train_data_dir))
+    random.shuffle(files)
     train_data_files = []
     for name in files:
         f = os.path.join(train_data_dir, name)
@@ -72,11 +73,12 @@ def load_multiple_files(train_data_dir: str,train_on_max_files: int):
             train_data_files.append(f)
 
     # randomly select the specified amount of log files.
-#    if 0 < train_on_max_files < len(train_data_files):
-#        train_data_files = random.sample(train_data_files, train_on_max_files)
+    if 0 < train_on_max_files < len(train_data_files):
+        train_data_files = random.sample(train_data_files, train_on_max_files)
 
     print(f"Files to load: {len(train_data_files)}")
     return train_data_files
+
 
 def create_mdp_dataset_from_files(train_data_files, rw_func)\
         -> d3rlpy.dataset.MDPDataset:
@@ -166,8 +168,7 @@ def create_mdp_dataset_from_file(train_data_file, rw_func)\
     return dataset
 
 
-def load_train_data_from_file(train_data_file, rw_func)\
-        -> d3rlpy.dataset.MDPDataset:
+def load_train_data_from_file(train_data_file):
 
     observations_file = []
     actions_file = []
@@ -182,11 +183,8 @@ def load_train_data_from_file(train_data_file, rw_func)\
         terminals_file = np.array(loaded['terms'])
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
-        else:
-            rewards_file = np.array([rw_func(o) for o in observations_file])
     elif ext.upper() == '.JSON':
         observations_file, actions_file, _, _ = load_train_data(train_data_file)
-        rewards_file = np.array([rw_func(o) for o in observations_file])
         terminals_file = np.zeros(len(observations_file))
         terminals_file[-1] = 1
 
