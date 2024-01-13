@@ -1,65 +1,76 @@
 import gymnasium as gym
 import numpy as np
-
-from BweReward import reward_r3net
+import BweReward
 
 def make_bw_act_space(actions):
     low = 0
-    high = np.max(actions)
-    #high = np.inf
+    high = max(actions)
+    # high = np.inf
 
     shape = (len(actions),)
-    #print(f"action shape {shape} \n")
+    # print(f"action shape {shape} \n")
     bw_action_space = gym.spaces.Box(low, high, shape, dtype=np.float32)
     return bw_action_space
+
 
 def make_bw_obs_space(observations):
     low = 0.0
     high = np.inf
-    shape = (len(observations),len(observations[0]))
-    #print(f"state space shape {shape} \n")
+    shape = (len(observations), len(observations[0]))
+    # print(f"state space shape {shape} \n")
     return gym.spaces.Box(low, high, shape, dtype=np.float32)
 
+
 class BweEnv(gym.Env):
-    def __init__(self, observations, actions, max_steps=1000):
-        self.actions = actions
-        self.observations = observations
-        self.action_space = make_bw_act_space(actions)
-        self.observation_space = make_bw_obs_space(observations)
-        self.seed=0
-        self.log = ''
-        self.max_steps = len(actions)
-        self.cur_step=0
+    def __init__(self, dataset, max_steps=10000):
+        self._actions = dataset['actions']
+        self._observations = dataset['observations']
+        self._observations_next = dataset['next_observations']
+        self._action_space = make_bw_act_space(self._actions)
+        self._rewards = dataset['rewards']
+        self._observation_space = make_bw_obs_space(self._observations)
+        self._terminals = dataset['terminals']
+        self._seed = 0
+        self._log = ''
+        self._max_steps = len(self._actions)
+        self._cur_step = 0
 
     def reset(self, seed=None):
         super().reset(seed=seed)
-        self.steps_left = self.max_steps
-        self.cur_step = 0
+        self._cur_step = 0
 
-        return self.observations[self.cur_step], {}
+        return self._observations[self._cur_step], {}
 
     def step(self, action):
-        # Do selected action (TODO)
-        cur_estimate = self.actions[self.cur_step]
-        cur_observation = self.observations[self.cur_step]
-        self.log += f'bwe: {cur_estimate}\n'
+        # Do selected action
+        cur_estimate = self._actions[self._cur_step]
+        cur_observation = self._observations[self._cur_step]
+        next_observation = self._observations_next[self._cur_step]
+        cur_reward = self._rewards[self._cur_step]
+        cur_terminal = self._terminals[self._cur_step]
+        new_reward = BweReward.RewardFunction('QOE_V1')(next_observation)
 
-        # Calculate the reward (TODO)
-        reward = reward_r3net(cur_observation);
+        self._steps_left -= 1
+        if (self._cur_steps >= self._max_steps) or (cur_terminal != 0):
+            done = True
+        else:
+            done = False
 
-        self.log += str(self.cur_step) + ' . '
+        self._log += f'Step: {self._cur_step}\n'
+        self._log += f'current estimate {cur_estimate}\n'
+        self._log += f'new estimate {action}\n'
+        self._log += f'current reward {cur_reward}\n'
+        self._log += f'new reward {new_reward}\n'
 
-        self.steps_left -= 1
-        done = (self.steps_left <= 0)
         truncated = False
         # step count increases
-        self.cur_step += 1
+        self._cur_step += 1
 
-        return cur_observation, reward, done, truncated, {}
+        return next_observation, new_reward, done, truncated, {}
 
     def close(self):
         pass
 
     def render(self, mode=None):
-        print(self.log)
-        self.log = ''
+        print(self._log)
+        self._log = ''

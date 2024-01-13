@@ -14,7 +14,7 @@
   "beta":0.5,
   "gamma": 0.99,
   "lam":0.75,
-  "batch_size": 64,
+  "batch_size": 32,
   "dataset_coverage": 0.8,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0001,
