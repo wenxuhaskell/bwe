@@ -44,6 +44,7 @@ def main() -> None:
         params['rank'] = 0
         params['world_size'] = 1
 
+    evalutor = True
     if params['algorithm_name'] == 'CQL':
         algo = BweModels.createCQL(params)
     elif params['algorithm_name'] == "SAC":
@@ -52,13 +53,15 @@ def main() -> None:
         algo = BweModels.createBCQ(params)
     elif params['algorithm_name'] == "DT":
         algo = BweModels.createDT(params)
+        # Decision Transformer does not support evaluator
+        evaluator = False
     else:
         print("Please provide a configuration file with a valid algorithm name!\n")
         return
 
     # train the model
     bwe = BweModels.BweDrl(params, algo)
-    bwe.train_model_gradually()
+    bwe.train_model_gradually(evaluator)
 
     # disable it for now
     if False:

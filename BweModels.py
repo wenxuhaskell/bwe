@@ -36,7 +36,7 @@ class BweDrl:
         # register your own encoder factory
         register_encoder_factory(LSTMEncoderFactory)
 
-    def train_model_gradually(self):
+    def train_model_gradually(self, evaluator: bool):
 
         datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
 
@@ -82,22 +82,36 @@ class BweDrl:
             test_episodes = dataset.episodes[:1]
             if self._rank == 0:
                 # offline training
-                self._algo.fit(
-                    dataset,
-                    n_steps=n_steps,
-                    n_steps_per_epoch=self._n_steps_per_epoch,
-                    experiment_name=f"experiment_{start_date}",
-                    with_timestamp=False,
-                    logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-                    evaluators={
-                        'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                        'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                        'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                        'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-                    },
-                    save_interval=10,
-                    enable_ddp=self._ddp,
-                )
+                if evaluator:
+                    self._algo.fit(
+                        dataset,
+                        n_steps=n_steps,
+                        n_steps_per_epoch=self._n_steps_per_epoch,
+                        experiment_name=f"experiment_{start_date}",
+                        with_timestamp=False,
+                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
+                        evaluators={
+                            'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
+                            'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                            'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                            'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+                        },
+                        save_interval=10,
+                        enable_ddp=self._ddp,
+                    )
+                else:
+                    self._algo.fit(
+                        dataset,
+                        n_steps=n_steps,
+                        n_steps_per_epoch=self._n_steps_per_epoch,
+                        experiment_name=f"experiment_{start_date}",
+                        with_timestamp=False,
+                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
+                                                         output_model_name=self._output_model_name),
+                        save_interval=10,
+                        enable_ddp=self._ddp,
+                    )
+
             else:
                 # offline training
                 self._algo.fit(
