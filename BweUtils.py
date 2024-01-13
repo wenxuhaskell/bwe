@@ -64,17 +64,12 @@ def get_decay_weights(num_weights: int, start_weight: float = 0.4, ratio: float 
 
 def load_multiple_files(train_data_dir: str, train_on_max_files: int):
     files = sorted(os.listdir(train_data_dir))
-    random.shuffle(files)
     train_data_files = []
     for name in files:
         f = os.path.join(train_data_dir, name)
         # checking if it is a file
         if os.path.isfile(f) and len(train_data_files) < train_on_max_files:
             train_data_files.append(f)
-
-    # randomly select the specified amount of log files.
-    if 0 < train_on_max_files < len(train_data_files):
-        train_data_files = random.sample(train_data_files, train_on_max_files)
 
     print(f"Files to load: {len(train_data_files)}")
     return train_data_files
