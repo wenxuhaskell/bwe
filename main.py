@@ -44,7 +44,7 @@ def main() -> None:
         params['rank'] = 0
         params['world_size'] = 1
 
-    evalutor = True
+    evaluator = True
     if params['algorithm_name'] == 'CQL':
         algo = BweModels.createCQL(params)
     elif params['algorithm_name'] == "SAC":

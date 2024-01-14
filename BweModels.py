@@ -96,7 +96,7 @@ class BweDrl:
                             'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
                             'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
                         },
-                        save_interval=10,
+                        save_interval=50,
                         enable_ddp=self._ddp,
                     )
                 else:
@@ -108,7 +108,7 @@ class BweDrl:
                         with_timestamp=False,
                         logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
                                                          output_model_name=self._output_model_name),
-                        save_interval=10,
+                        save_interval=50,
                         enable_ddp=self._ddp,
                     )
 
