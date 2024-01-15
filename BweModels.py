@@ -12,7 +12,7 @@ from tqdm import tqdm
 from BweReward import RewardFunction
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
-from BweEncoder import LSTMEncoderFactory
+from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 
 
 class BweDrl:
@@ -87,7 +87,7 @@ class BweDrl:
                         dataset,
                         n_steps=n_steps,
                         n_steps_per_epoch=self._n_steps_per_epoch,
-                        experiment_name=f"experiment_{start_date}",
+#                        experiment_name=f"experiment_{start_date}",
                         with_timestamp=False,
                         logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
                         evaluators={
@@ -96,7 +96,7 @@ class BweDrl:
                             'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
                             'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
                         },
-                        save_interval=50,
+                        save_interval=10,
                         enable_ddp=self._ddp,
                     )
                 else:
@@ -104,11 +104,11 @@ class BweDrl:
                         dataset,
                         n_steps=n_steps,
                         n_steps_per_epoch=self._n_steps_per_epoch,
-                        experiment_name=f"experiment_{start_date}",
+#                        experiment_name=f"experiment_{start_date}",
                         with_timestamp=False,
                         logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
                                                          output_model_name=self._output_model_name),
-                        save_interval=50,
+                        save_interval=10,
                         enable_ddp=self._ddp,
                     )
 
@@ -317,6 +317,8 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
+    ac_encoder_factory = ACEncoderFactory(1)
+
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -331,6 +333,8 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),

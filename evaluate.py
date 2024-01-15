@@ -60,7 +60,7 @@ def main() -> None:
             # add batch dimension
             observation = observation.reshape((1, len(observation))).astype(np.float32)
             prediction = algo.predict(observation)[0]
-            prediction = math.floor(prediction * (action_max - action_min))
+            prediction = np.floor(prediction * (action_max - action_min))
             predictions.append(prediction)
 
     bw_predictions = np.concatenate(bw_predictions)

@@ -61,3 +61,56 @@ class LSTMEncoderFactory(d3rlpy.models.EncoderFactory):
     @staticmethod
     def get_type() -> str:
         return "ltsm"
+
+
+
+class ACEncoder(nn.Module):
+    def __init__(self, observation_shape, feature_size):
+        super().__init__()
+        self.feature_size = feature_size
+        self.fc1 = nn.Linear(observation_shape[0], 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, feature_size)
+
+    def forward(self, inp):
+        inp = torch.relu(self.fc1(inp))
+        inp = torch.relu(self.fc2(inp))
+        inp = torch.relu(self.fc3(inp))
+        outp = torch.relu(self.fc4(inp))
+
+        return outp
+
+
+class ACEncoderWithAction(nn.Module):
+    def __init__(self, observation_shape, action_size, feature_size):
+        super().__init__()
+        self.feature_size = feature_size
+        self.fc1 = nn.Linear(observation_shape[0] + action_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, feature_size)
+
+    def forward(self, inp, action):
+        inp = torch.cat([inp, action], dim=1)
+        inp = torch.relu(self.fc1(inp))
+        inp = torch.relu(self.fc2(inp))
+        inp = torch.relu(self.fc3(inp))
+        outp = torch.sigmoid(self.fc4(inp))
+
+        return outp
+
+
+@dataclasses.dataclass()
+class ACEncoderFactory(d3rlpy.models.EncoderFactory):
+    feature_size: int
+
+    def create(self, observation_shape):
+        return ACEncoder(observation_shape, feature_size=self.feature_size)
+
+    def create_with_action(self, observation_shape, action_size):
+        return ACEncoderWithAction(observation_shape, action_size, self.feature_size)
+
+    @staticmethod
+    def get_type() -> str:
+        return "ltsm"
