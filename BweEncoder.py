@@ -48,22 +48,6 @@ class LSTMEncoderWithAction(nn.Module):
         return torch.relu(hidden_output.squeeze(dim=0))
 
 
-@dataclasses.dataclass()
-class LSTMEncoderFactory(d3rlpy.models.EncoderFactory):
-    feature_size: int
-
-    def create(self, observation_shape):
-        return LSTMEncoder(observation_shape, feature_size=self.feature_size)
-
-    def create_with_action(self, observation_shape, action_size):
-        return LSTMEncoderWithAction(observation_shape, action_size, self.feature_size)
-
-    @staticmethod
-    def get_type() -> str:
-        return "ltsm"
-
-
-
 class ACEncoder(nn.Module):
     def __init__(self, observation_shape, feature_size):
         super().__init__()
@@ -102,6 +86,21 @@ class ACEncoderWithAction(nn.Module):
 
 
 @dataclasses.dataclass()
+class LSTMEncoderFactory(d3rlpy.models.EncoderFactory):
+    feature_size: int
+
+    def create(self, observation_shape):
+        return LSTMEncoder(observation_shape, feature_size=self.feature_size)
+
+    def create_with_action(self, observation_shape, action_size):
+        return LSTMEncoderWithAction(observation_shape, action_size, self.feature_size)
+
+    @staticmethod
+    def get_type() -> str:
+        return "ltsm"
+
+
+@dataclasses.dataclass()
 class ACEncoderFactory(d3rlpy.models.EncoderFactory):
     feature_size: int
 
@@ -113,4 +112,4 @@ class ACEncoderFactory(d3rlpy.models.EncoderFactory):
 
     @staticmethod
     def get_type() -> str:
-        return "ac"
+        return "actorcritic"
