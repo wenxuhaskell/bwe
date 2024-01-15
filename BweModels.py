@@ -35,6 +35,7 @@ class BweDrl:
 
         # register your own encoder factory
         register_encoder_factory(LSTMEncoderFactory)
+        register_encoder_factory(ACEncoderFactory)
 
     def train_model_gradually(self, evaluator: bool):
 
@@ -336,7 +337,7 @@ def createCQL(params):
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
-        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+#        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
     ).create(device=params['device'])
