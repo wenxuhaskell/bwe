@@ -61,7 +61,7 @@ class ACEncoder(nn.Module):
         inp = torch.relu(self.fc1(inp))
         inp = torch.relu(self.fc2(inp))
         inp = torch.relu(self.fc3(inp))
-        outp = torch.relu(self.fc4(inp))
+        outp = torch.sigmoid(self.fc4(inp))
 
         return outp
 
