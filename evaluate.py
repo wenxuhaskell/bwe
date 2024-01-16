@@ -41,14 +41,14 @@ def main() -> None:
     algo = d3rlpy.load_learnable(args.model, device='cuda:0' if torch.cuda.is_available() else 'cpu:0')
 
     # load the params.json
-#    if not os.path.exists(args.parameters):
-#        print("There is no parameters for the model evaluation!\n")
-#        return
+    if not os.path.exists(args.parameters):
+        print("There is no parameters for the model evaluation!\n")
+        return
 
-#    f = open(args.parameters, 'r')
-#    data = json.load(f)
-#    action_min = data['config']['params']['action_scaler']['params']['minimum'][0]
-#    action_max = data['config']['params']['action_scaler']['params']['maximum'][0]
+    f = open(args.parameters, 'r')
+    data = json.load(f)
+    action_min = data['config']['params']['action_scaler']['params']['minimum'][0]
+    action_max = data['config']['params']['action_scaler']['params']['maximum'][0]
 
     # load the list of log files under the given directory
     # iterate over files in that directory
@@ -66,8 +66,6 @@ def main() -> None:
             # add batch dimension
             observation = observation.reshape((1, len(observation))).astype(np.float32)
             prediction = algo.predict(observation)[0]
-#            if 0 < prediction < 1:
-#                prediction = np.floor(prediction * (action_max - action_min))
             predictions.append(prediction)
 
     bw_predictions = np.concatenate(bw_predictions)

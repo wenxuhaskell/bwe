@@ -96,6 +96,17 @@ def main() -> None:
             for future in tqdm(as_completed(futures), desc=f'Batch {counter+1} - Loading MDP', unit="file"):
                 result = future.result()
                 observations_file, actions_file, terminals_file = result
+                # filter out bandwidth = 20000.0
+                c = 0
+                for a in actions_file:
+                    if a == 20000.0:
+                        c += 1
+                    else:
+                        break
+                observations_file = observations_file[c:]
+                actions_file = actions_file[c:]
+                terminals_file = terminals_file[c:]
+
                 observations.append(observations_file)
                 actions.append(actions_file)
                 terminals.append(terminals_file)
