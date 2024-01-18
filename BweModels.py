@@ -318,8 +318,8 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-    ac_encoder_factory = ACEncoderFactory(1)
-
+#    ac_encoder_factory = ACEncoderFactory(1)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,64,32], use_batch_norm=True, exclude_last_activation=False, last_activation='tanh')
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -334,8 +334,8 @@ def createCQL(params):
         alpha_threshold=_alpha_threshold,
         conservative_weight=_conservative_weight,
         n_action_samples=_n_action_samples,
-#        actor_encoder_factory=ac_encoder_factory,
-#        critic_encoder_factory=ac_encoder_factory,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),
