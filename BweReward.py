@@ -189,7 +189,7 @@ class RewardFunction:
 # D - queuing delay, ms (R3Net uses average Round Trip Time)
 # L - packet loss rate
 # receiving more packets is rewarded, delay and packet loss is penalized.
-def reward_r3net(feature_vec):
+def reward_r3net(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> float:
     # use the 5 recent short MIs. (TODO: refinement)
     receive_rate = np.sum(feature_vec[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
     queuing_delay = np.sum(feature_vec[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
@@ -213,15 +213,15 @@ def reward_r3net(feature_vec):
 #
 # Here we uses the statistic of recent measure intervals (as the feature vectors)
 #
-def reward_onrl(feature_vec):
+def reward_onrl(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> float:
     alpha = 50
     beta = 50
     eta = 10
     phi = 20
 
-    receive_rate = np.sum(feature_vec[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5])
-    queuing_delay = np.sum(feature_vec[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5])
-    pkt_loss_rate = np.sum(feature_vec[(Feature.PKT_LOSS_RATIO - 1) * 10 : (Feature.PKT_LOSS_RATIO - 1) * 10 + 5])
+    receive_rate = np.sum(feature_vec[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5])/5
+    queuing_delay = np.sum(feature_vec[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5])/5
+    pkt_loss_rate = np.sum(feature_vec[(Feature.PKT_LOSS_RATIO - 1) * 10 : (Feature.PKT_LOSS_RATIO - 1) * 10 + 5])/5
 
     # incomplete - the last term is not in place. (TODO)
     return alpha * receive_rate - beta * pkt_loss_rate - eta * queuing_delay - 0
