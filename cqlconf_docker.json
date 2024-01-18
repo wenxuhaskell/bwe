@@ -1,9 +1,9 @@
 {
   "algorithm_name":"CQL",
-  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-  "train_on_max_files": 10,
-  "reward_func_name": "QOE_V1",
+  "train_on_max_files": 3,
+  "reward_func_name": "r3net",
   "output_model_name": "cqlmodel",
   "log_folder_name": "CQL",
   "initial_alpha": 1.0,
@@ -20,5 +20,6 @@
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0003,
   "temp_learning_rate": 0.0001,
-  "alpha_learning_rate": 0.0001
+  "alpha_learning_rate": 0.0001,
+  "device": "cuda:1"
 }
