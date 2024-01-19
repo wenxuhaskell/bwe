@@ -4,7 +4,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pathlib
 import json
-
+import random
 import d3rlpy
 
 
@@ -60,8 +60,10 @@ def get_decay_weights(num_weights: int, start_weight: float = 0.4, ratio: float 
     return weights
 
 
-def load_multiple_files(train_data_dir: str, train_on_max_files: int):
+def load_multiple_files(train_data_dir: str, train_on_max_files: int, random_choice: bool=False):
     files = sorted(os.listdir(train_data_dir))
+    if random_choice:
+        random.shuffle(files)
     train_data_files = []
     for name in files:
         f = os.path.join(train_data_dir, name)
