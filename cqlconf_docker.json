@@ -2,8 +2,8 @@
   "algorithm_name":"CQL",
   "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-  "train_on_max_files": 3,
-  "reward_func_name": "r3net",
+  "train_on_max_files": 100,
+  "reward_func_name": "qoe_v1",
   "output_model_name": "cqlmodel",
   "log_folder_name": "CQL",
   "initial_alpha": 1.0,
@@ -14,12 +14,11 @@
   "n_critics": 2,
   "initial_temperature": 1.0,
   "tau": 0.005,
-  "batch_size": 32,
+  "batch_size": 64,
   "dataset_coverage": 1,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0003,
   "temp_learning_rate": 0.0001,
-  "alpha_learning_rate": 0.0001,
-  "device": "cuda:1"
+  "alpha_learning_rate": 0.0001
 }

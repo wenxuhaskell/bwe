@@ -39,7 +39,7 @@ class BweDrl:
 
     def train_model_gradually(self, evaluator: bool):
 
-        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
+        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files, random_choice=True)
 
         if self._rank == 0:
             # name of log folder
@@ -318,7 +318,6 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-#    ac_encoder_factory = ACEncoderFactory(1)
     ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,64,32])
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
@@ -393,6 +392,8 @@ def createBCQ(params):
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
 
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,64,32])
+    
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -407,6 +408,8 @@ def createBCQ(params):
         action_flexibility=_action_flexibility,
         beta=_beta,
         rl_start_step=_rl_start_step,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()

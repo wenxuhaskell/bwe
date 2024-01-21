@@ -1,9 +1,9 @@
 
 {
   "algorithm_name":"SAC",
-  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-  "train_on_max_files": 3,
+  "train_on_max_files": 50,
   "reward_func_name": "QOE_V1",
   "output_model_name": "sacmodel",
   "log_folder_name": "SAC",
@@ -11,11 +11,10 @@
   "n_critics": 2,
   "initial_temperature": 1.0,
   "tau": 0.005,
-  "batch_size": 64,
+  "batch_size": 32,
   "dataset_coverage": 0.8,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0003,
-  "temp_learning_rate": 0.0003,
-  "device": "cpu:0"
+  "temp_learning_rate": 0.0003
 }
