@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 import BweReward
 
+
 def make_bw_act_space(actions):
     low = 0
     high = max(actions)
