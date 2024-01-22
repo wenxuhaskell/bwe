@@ -39,7 +39,7 @@ class BweDrl:
 
     def train_model_gradually(self, evaluator: bool):
 
-        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files, random_choice=True)
+        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
 
         if self._rank == 0:
             # name of log folder
