@@ -150,7 +150,8 @@ def main() -> None:
                 actions_file = actions_file[c:]
                 terminals_file = terminals_file[c:]
                 # calculate rewards
-                rewards_file = np.array([reward_func(o) for o in observations_file])
+                rewards_file = [reward_func(o) for o in observations_file]
+                rewards_file = np.append(rewards_file[1:], 0)
                 # PCA dimensionality reduction of the feature
                 if args.algo.upper() == 'PCA':
                     observations_file = process_feature_pca(observations_file, args.dim)
