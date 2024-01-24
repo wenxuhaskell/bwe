@@ -1,16 +1,17 @@
 import argparse
 import tkinter
-from tkinter import filedialog, Tk, Button, Label
+from tkinter import filedialog, Tk, Button, Label, messagebox
 from typing import Any, Dict, List
 import d3rlpy
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.cuda
+from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, get_feature_for_mi, get_decay_weights, reward_qoe_v1
+from BweReward import Feature, MI, MIType, get_feature, get_feature_for_mi, get_decay_weights
 
 model_filename = ''
 data_filenames =[]
@@ -94,11 +95,20 @@ def rewards_qoe(observation: List[float], rf_params: Dict[str, Any]) -> float:
     return final_qoe, (short_qoe*5), (long_qoe*5)
 
 
+def get_feature_by_index(
+    observation: List[float],
+    feature_index: Feature,
+    mi: MI = MI.LONG_600,
+) -> float:
+    return observation[(feature_index - 1) * 10 + mi - 1]
+
+
 class eval_model:
     def __init__(self, initdir: str):
         self.__initdir = initdir
         self.__data_filenames = []
         self.__model_filename = ''
+        self.__plot_log = False
 
     def run(self):
         window = Tk()
@@ -120,6 +130,8 @@ class eval_model:
         data_file_names = ''.join([o + '\n' for o in self.__data_filenames])
         label_data = Label(text=data_file_names)
 
+        self.ask_plot_log()
+
         self.eval_model()
 
         label_model.grid(column=1, row=1)
@@ -135,6 +147,9 @@ class eval_model:
         self.__data_filenames = filedialog.askopenfilenames(initialdir=self.__initdir,
                                                 title="Select data files",
                                                 filetypes=(("Json files", "*.json"), ("Npz files", "*.npz")))
+
+    def ask_plot_log(self):
+        self.__plot_log = messagebox.askyesno("Plot log file?")
 
     def eval_model(self):
         if self.__model_filename == '':
@@ -164,6 +179,25 @@ class eval_model:
             "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
             "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
         }
+
+        # short mi features
+        smi_f1 = []
+        smi_f2 = []
+        smi_f3 = []
+        smi_f4 = []
+        smi_f5 = []
+        smi_f6 = []
+        smi_f7 = []
+        smi_f8 = []
+        smi_f9 = []
+        smi_f10 = []
+        smi_f11 = []
+        smi_f12 = []
+        smi_f13 = []
+        smi_f14 = []
+        smi_f15 = []
+
+
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
             observations, bw_preds, _, _ = result
@@ -171,11 +205,31 @@ class eval_model:
 
             # returns greedy action
             for observation in observations:
-                # add batch dimension
+                # extract rewards
                 f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
                 f_rwds.append(f_reward)
                 s_rwds.append(s_reward)
                 l_rwds.append(l_reward)
+                if self.__plot_log:
+                    # extract features for MI.SHORT_300
+                    m_interval = MI.SHORT_300
+                    smi_f1.append(get_feature_by_index(observation, Feature.RECV_RATE, m_interval))
+                    smi_f2.append(get_feature_by_index(observation, Feature.RECV_PKT_AMOUNT, m_interval))
+                    smi_f3.append(get_feature_by_index(observation, Feature.RECV_BYTES, m_interval))
+                    smi_f4.append(get_feature_by_index(observation, Feature.QUEUING_DELAY, m_interval))
+                    smi_f5.append(get_feature_by_index(observation, Feature.DELAY, m_interval))
+                    smi_f6.append(get_feature_by_index(observation, Feature.MIN_SEEN_DELAY, m_interval))
+                    smi_f7.append(get_feature_by_index(observation, Feature.DELAY_RATIO, m_interval))
+                    smi_f8.append(get_feature_by_index(observation, Feature.DELAY_MIN_DIFF, m_interval))
+                    smi_f9.append(get_feature_by_index(observation, Feature.PKT_INTERARRIVAL, m_interval))
+                    smi_f10.append(get_feature_by_index(observation, Feature.PKT_JITTER, m_interval))
+                    smi_f11.append(get_feature_by_index(observation, Feature.PKT_LOSS_RATIO, m_interval))
+                    smi_f12.append(get_feature_by_index(observation, Feature.PKT_AVE_LOSS, m_interval))
+                    smi_f13.append(get_feature_by_index(observation, Feature.VIDEO_PKT_PROB, m_interval))
+                    smi_f14.append(get_feature_by_index(observation, Feature.AUDIO_PKT_PROB, m_interval))
+                    smi_f15.append(get_feature_by_index(observation, Feature.PROB_PKT_PROB, m_interval))
+
+                # add batch dimension for prediction
                 observation = observation.reshape((1, len(observation))).astype(np.float32)
                 prediction = algo.predict(observation)[0]
                 predictions.append(prediction)
@@ -185,29 +239,101 @@ class eval_model:
         s_rwds = np.append(s_rwds[1:], 0)
         l_rwds = np.append(l_rwds[1:], 0)
 
+        if self.__plot_log:
+            # scaling
+            scaler = MinMaxScaler(feature_range=(0,10))
+            smi_f1 = scaler.fit_transform(np.array(smi_f1).reshape(-1,1))
+            smi_f2 = scaler.fit_transform(np.array(smi_f2).reshape(-1,1))
+            smi_f3 = scaler.fit_transform(np.array(smi_f3).reshape(-1,1))
+            smi_f4 = scaler.fit_transform(np.array(smi_f4).reshape(-1,1))
+            smi_f5 = scaler.fit_transform(np.array(smi_f5).reshape(-1,1))
+            smi_f6 = scaler.fit_transform(np.array(smi_f6).reshape(-1,1))
+            smi_f7 = scaler.fit_transform(np.array(smi_f7).reshape(-1,1))
+            smi_f8 = scaler.fit_transform(np.array(smi_f8).reshape(-1,1))
+            smi_f9 = scaler.fit_transform(np.array(smi_f9).reshape(-1,1))
+            smi_f10 = scaler.fit_transform(np.array(smi_f10).reshape(-1,1))
+            smi_f11 = scaler.fit_transform(np.array(smi_f11).reshape(-1,1))
+            smi_f12 = scaler.fit_transform(np.array(smi_f12).reshape(-1,1))
+            smi_f13 = scaler.fit_transform(np.array(smi_f13).reshape(-1,1))
+            smi_f14 = scaler.fit_transform(np.array(smi_f14).reshape(-1,1))
+            smi_f15 = scaler.fit_transform(np.array(smi_f15).reshape(-1,1))
+
         # plot the predictions
         x = range(len(predictions))
         predictions_scaled = [x / 1000000 for x in predictions]
         bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
-        plt.subplot(2,1,1)
-        plt.plot(x, predictions_scaled, label="estimate")
-        plt.plot(x, bw_predictions_scaled, label="baseline")
-        plt.legend()
-        plt.ylabel("Estimate")
-        plt.xlabel("Step")
-        plt.title('Estimate divided by 10e6')
 
-        plt.subplot(2,1,2)
-        plt.plot(x, f_rwds, label="t_reward")
-        plt.plot(x, s_rwds, label="s_reward")
-        plt.plot(x, l_rwds, label="l_reward")
-        plt.legend()
-        plt.ylabel('Reward')
-        algo_name = self.__model_filename.split('/')[-1]
-        log_file_name = filename.split('/')[-1]
-        plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
 
-        plt.show()
+        if not self.__plot_log:
+
+            plt.subplot(2,1,1)
+            plt.plot(x, predictions_scaled, label="estimate")
+            plt.plot(x, bw_predictions_scaled, label="baseline")
+            plt.legend()
+            plt.ylabel("Estimate")
+            plt.xlabel("Step")
+            plt.title('Estimate divided by 10e6')
+
+            plt.subplot(2,1,2)
+            plt.plot(x, f_rwds, label="t_reward")
+            plt.plot(x, s_rwds, label="s_reward")
+            plt.plot(x, l_rwds, label="l_reward")
+            plt.legend()
+            plt.ylabel('Reward')
+            algo_name = self.__model_filename.split('/')[-1]
+            log_file_name = filename.split('/')[-1]
+            plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
+            plt.show()
+
+        else:
+            plt.subplot(2, 4, 1)
+            plt.plot(x, predictions_scaled, label="estimate")
+            plt.plot(x, bw_predictions_scaled, label="baseline")
+            plt.legend()
+            plt.ylabel("Estimate")
+            plt.xlabel("Step")
+            plt.title('Estimate divided by 10e6')
+
+            plt.subplot(2, 4, 5)
+            plt.plot(x, f_rwds, label="t_reward")
+            plt.plot(x, s_rwds, label="s_reward")
+            plt.plot(x, l_rwds, label="l_reward")
+            plt.legend()
+            plt.ylabel('Reward')
+            algo_name = self.__model_filename.split('/')[-1]
+            log_file_name = filename.split('/')[-1]
+            plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
+
+            plt.subplot(2,4,2)
+            plt.plot(x, smi_f1, label="f1-recv_rate")
+            plt.plot(x, smi_f2, label="f2-recv_pkt_amount")
+            plt.plot(x, smi_f3, label="f3-recv_bytes")
+            plt.legend()
+
+            plt.subplot(2,4,6)
+            plt.plot(x, smi_f4, label="queuing_delay")
+            plt.plot(x, smi_f5, label="delay")
+            plt.plot(x, smi_f6, label="min_seen_delay")
+            plt.legend()
+
+            plt.subplot(2,4,3)
+            plt.plot(x, smi_f7, label="delay_ratio")
+            plt.plot(x, smi_f8, label="delay_min_diff")
+            plt.plot(x, smi_f9, label="pkt_interarrival")
+            plt.legend()
+
+            plt.subplot(2,4,7)
+            plt.plot(x, smi_f10, label="pkt_jitter")
+            plt.plot(x, smi_f11, label="pkt_loss_ratio")
+            plt.plot(x, smi_f12, label="pkt_ave_loss")
+            plt.legend()
+
+            plt.subplot(2,4,4)
+            plt.plot(x, smi_f13, label="video_pkt_prob")
+            plt.plot(x, smi_f14, label="audio_pkt_prob")
+            plt.plot(x, smi_f15, label="prob_pkt_prob")
+            plt.legend()
+            plt.show()
 
 
 def main() -> None:
