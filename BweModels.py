@@ -27,6 +27,7 @@ class BweDrl:
         self._n_steps_per_epoch = params['n_steps_per_epoch']
         self._dataset_coverage = params['dataset_coverage']
         self._algo = algo
+        self._algo_name = params['algorithm_name']
         self._reward_func = RewardFunction(params['reward_func_name'])
         self._device = params['device']
         self._ddp = params['ddp']
@@ -35,6 +36,10 @@ class BweDrl:
         # register your own encoder factory
         register_encoder_factory(ACEncoderFactory)
         register_encoder_factory(LSTMEncoderFactory)
+
+
+    def get_algo_name(self) -> str:
+        return self._algo_name
 
 
     def train_model_gradually(self, evaluator: bool):
