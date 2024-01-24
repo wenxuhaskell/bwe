@@ -205,12 +205,13 @@ class eval_model:
 
             # returns greedy action
             for observation in observations:
-                # extract rewards
-                f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
-                f_rwds.append(f_reward)
-                s_rwds.append(s_reward)
-                l_rwds.append(l_reward)
                 if self.__plot_log:
+                    # extract rewards
+                    f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
+                    f_rwds.append(f_reward)
+                    s_rwds.append(s_reward)
+                    l_rwds.append(l_reward)
+
                     # extract features for MI.SHORT_300
                     m_interval = MI.SHORT_300
                     smi_f1.append(get_feature_by_index(observation, Feature.RECV_RATE, m_interval))
@@ -235,11 +236,12 @@ class eval_model:
                 predictions.append(prediction)
 
         bw_predictions = np.concatenate(bw_predictions)
-        f_rwds = np.append(f_rwds[1:], 0)
-        s_rwds = np.append(s_rwds[1:], 0)
-        l_rwds = np.append(l_rwds[1:], 0)
 
         if self.__plot_log:
+            f_rwds = np.append(f_rwds[1:], 0)
+            s_rwds = np.append(s_rwds[1:], 0)
+            l_rwds = np.append(l_rwds[1:], 0)
+
             # scaling
             scaler = MinMaxScaler(feature_range=(0,10))
             smi_f1 = scaler.fit_transform(np.array(smi_f1).reshape(-1,1))
@@ -265,21 +267,12 @@ class eval_model:
 
 
         if not self.__plot_log:
-
-            plt.subplot(2,1,1)
             plt.plot(x, predictions_scaled, label="estimate")
             plt.plot(x, bw_predictions_scaled, label="baseline")
             plt.legend()
             plt.ylabel("Estimate")
-            plt.xlabel("Step")
             plt.title('Estimate divided by 10e6')
 
-            plt.subplot(2,1,2)
-            plt.plot(x, f_rwds, label="t_reward")
-            plt.plot(x, s_rwds, label="s_reward")
-            plt.plot(x, l_rwds, label="l_reward")
-            plt.legend()
-            plt.ylabel('Reward')
             algo_name = self.__model_filename.split('/')[-1]
             log_file_name = filename.split('/')[-1]
             plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
@@ -333,6 +326,55 @@ class eval_model:
             plt.plot(x, smi_f14, label="audio_pkt_prob")
             plt.plot(x, smi_f15, label="prob_pkt_prob")
             plt.legend()
+
+            r_preds = np.corrcoef(np.array(predictions_scaled).reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Model-Baseline corrcoef:\n {r_preds}')
+
+            r_pred_f1 = np.corrcoef(smi_f1.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Recv_rate corrcoef:\n {r_pred_f1}')
+
+            r_pred_f2 = np.corrcoef(smi_f2.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Recv_pkt_amount corrcoef:\n {r_pred_f2}')
+
+            r_pred_f3 = np.corrcoef(smi_f3.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Recv_bytes corrcoef:\n {r_pred_f3}')
+
+            r_pred_f4 = np.corrcoef(smi_f4.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Queuing_delay corrcoef:\n {r_pred_f4}')
+
+            r_pred_f5 = np.corrcoef(smi_f5.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Delay corrcoef:\n {r_pred_f5}')
+
+            r_pred_f6 = np.corrcoef(smi_f6.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Min_seen_delay corrcoef:\n {r_pred_f6}')
+
+            r_pred_f7 = np.corrcoef(smi_f7.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Delay_ratio corrcoef:\n {r_pred_f7}')
+
+            r_pred_f8 = np.corrcoef(smi_f8.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Delay_min_diff corrcoef:\n {r_pred_f8}')
+
+            r_pred_f9 = np.corrcoef(smi_f9.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Pkt_interarrival corrcoef:\n {r_pred_f9}')
+
+            r_pred_f10 = np.corrcoef(smi_f10.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Pkt_jitter corrcoef:\n {r_pred_f10}')
+
+            r_pred_f11 = np.corrcoef(smi_f11.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Pkt_loss_ratio corrcoef:\n {r_pred_f11}')
+
+            r_pred_f12 = np.corrcoef(smi_f12.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Pkt_ave_loss corrcoef:\n {r_pred_f12}')
+
+            r_pred_f13 = np.corrcoef(smi_f13.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Video_pkt_prob corrcoef:\n {r_pred_f13}')
+
+            r_pred_f14 = np.corrcoef(smi_f14.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Audio_pkt_prob corrcoef:\n {r_pred_f14}')
+
+            r_pred_f15 = np.corrcoef(smi_f15.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
+            print(f'Baseline-Prob_pkt_prob corrcoef:\n {r_pred_f15}')
+
             plt.show()
 
 

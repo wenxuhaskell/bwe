@@ -167,6 +167,8 @@ class RewardFunction:
     def __init__(self, reward_func_name: str = "QOE_V1"):
         self.inner_params = {}
         match (reward_func_name.upper()):
+            case "BWE":
+                self.reward_func = reward_bwe
             case "R3NET":
                 self.reward_func = reward_r3net
             case "ONRL":
@@ -293,3 +295,23 @@ def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any]) -> float:
     final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
     final_qoe *= 5
     return final_qoe
+
+
+def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
+    # use the 5 recent short MIs.
+    # to adward
+    video_pkt_prob = np.sum(observation[(Feature.VIDEO_PKT_PROB - 1) * 10: (Feature.VIDEO_PKT_PROB - 1) * 10 + 5]) / 5
+    receive_rate = np.sum(observation[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
+
+    award = (0.5*video_pkt_prob + 0.5*receive_rate)
+
+    # to punish
+    audio_pkt_prob = np.sum(observation[(Feature.AUDIO_PKT_PROB - 1) * 10 : (Feature.AUDIO_PKT_PROB - 1) * 10 + 5]) / 5
+    pkt_interarrival = np.sum(observation[(Feature.PKT_INTERARRIVAL - 1) * 10 : (Feature.PKT_INTERARRIVAL - 1) * 10 + 5]) / 5
+    pkt_jitter = np.sum(observation[(Feature.PKT_JITTER - 1) * 10 : (Feature.PKT_JITTER - 1) * 10 + 5]) / 5
+    pkt_loss_rate = np.sum(observation[(Feature.PKT_LOSS_RATIO - 1) * 10: (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
+    queuing_delay = np.sum(observation[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
+
+    fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
+
+    return (award - fine)*5
