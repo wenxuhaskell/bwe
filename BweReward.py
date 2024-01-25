@@ -323,7 +323,7 @@ def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> floa
 
         rewards.append((0.7*award - 0.5*fine)*5)
 
-    diff = (rewards[1] - 0.5*rewards[0])
+    diff = (2*rewards[1] - rewards[0])
     diff_per = np.abs(diff)/np.abs(rewards[0])
     alpha = 0.6
     beta = 0.4
