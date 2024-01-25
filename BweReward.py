@@ -298,20 +298,40 @@ def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any]) -> float:
 
 
 def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
-    # use the 5 recent short MIs.
-    # to adward
-    video_pkt_prob = np.sum(observation[(Feature.VIDEO_PKT_PROB - 1) * 10: (Feature.VIDEO_PKT_PROB - 1) * 10 + 5]) / 5
-    receive_rate = np.sum(observation[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
 
-    award = (0.5*video_pkt_prob + 0.5*receive_rate)
+    mi_cur = MI.LONG_600
+    mi_nxt = MI.LONG_1200
+    mi_list = [mi_cur, mi_nxt]
+    rewards = []
+    final_reward = 0.0
 
-    # to punish
-    audio_pkt_prob = np.sum(observation[(Feature.AUDIO_PKT_PROB - 1) * 10 : (Feature.AUDIO_PKT_PROB - 1) * 10 + 5]) / 5
-    pkt_interarrival = np.sum(observation[(Feature.PKT_INTERARRIVAL - 1) * 10 : (Feature.PKT_INTERARRIVAL - 1) * 10 + 5]) / 5
-    pkt_jitter = np.sum(observation[(Feature.PKT_JITTER - 1) * 10 : (Feature.PKT_JITTER - 1) * 10 + 5]) / 5
-    pkt_loss_rate = np.sum(observation[(Feature.PKT_LOSS_RATIO - 1) * 10: (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
-    queuing_delay = np.sum(observation[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
+    for mi in mi_list:
+        # to award
+        video_pkt_prob = np.sum(observation[(Feature.VIDEO_PKT_PROB - 1) * 10 + mi: (Feature.VIDEO_PKT_PROB - 1) * 10 + 5 + mi]) / 5
+        receive_rate = np.sum(observation[(Feature.RECV_RATE - 1) * 10 + mi: (Feature.RECV_RATE - 1) * 10 + 5 + mi]) / 5
 
-    fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
+        award = (0.5*video_pkt_prob + 0.5*receive_rate)
 
-    return (award - fine)*5
+        # to punish
+        audio_pkt_prob = np.sum(observation[(Feature.AUDIO_PKT_PROB - 1) * 10 + mi: (Feature.AUDIO_PKT_PROB - 1) * 10 + 5 + mi]) / 5
+        pkt_interarrival = np.sum(observation[(Feature.PKT_INTERARRIVAL - 1) * 10 + mi : (Feature.PKT_INTERARRIVAL - 1) * 10 + 5 + mi]) / 5
+        pkt_jitter = np.sum(observation[(Feature.PKT_JITTER - 1) * 10 + mi: (Feature.PKT_JITTER - 1) * 10 + 5 + mi]) / 5
+        pkt_loss_rate = np.sum(observation[(Feature.PKT_LOSS_RATIO - 1) * 10 + mi: (Feature.PKT_LOSS_RATIO - 1) * 10 + 5 + mi]) / 5
+        queuing_delay = np.sum(observation[(Feature.QUEUING_DELAY - 1) * 10 + mi: (Feature.QUEUING_DELAY - 1) * 10 + 5 + mi]) / 5
+
+        fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
+
+        rewards.append((0.8*award - 0.5*fine)*5)
+
+    diff = (rewards[1] - rewards[0])*0.3
+    diff_per = np.abs(diff)/np.abs(rewards[0])
+    if diff_per < 0.1:
+        final_reward = rewards[1]
+    elif 0.1 < diff_per < 0.3:
+        final_reward = rewards[1] - 0.2 * diff
+    elif 0.3 < diff_per < 0.6:
+        final_reward = rewards[1] - 0.4 * diff
+    else:
+        final_reward = rewards[1] - 0.8 * diff
+
+    return final_reward

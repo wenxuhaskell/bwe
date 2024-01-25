@@ -11,7 +11,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, get_feature, get_feature_for_mi, get_decay_weights
+from BweReward import Feature, MI, MIType, get_feature, get_feature_for_mi, get_decay_weights, reward_bwe
 
 model_filename = ''
 data_filenames =[]
@@ -93,6 +93,26 @@ def rewards_qoe(observation: List[float], rf_params: Dict[str, Any]) -> float:
     final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
     final_qoe *= 5
     return final_qoe, (short_qoe*5), (long_qoe*5)
+
+
+def rewards_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
+    # use the 5 recent short MIs.
+    # to adward
+    video_pkt_prob = np.sum(observation[(Feature.VIDEO_PKT_PROB - 1) * 10: (Feature.VIDEO_PKT_PROB - 1) * 10 + 5]) / 5
+    receive_rate = np.sum(observation[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
+
+    award = (0.5*video_pkt_prob + 0.5*receive_rate)
+
+    # to punish
+    audio_pkt_prob = np.sum(observation[(Feature.AUDIO_PKT_PROB - 1) * 10 : (Feature.AUDIO_PKT_PROB - 1) * 10 + 5]) / 5
+    pkt_interarrival = np.sum(observation[(Feature.PKT_INTERARRIVAL - 1) * 10 : (Feature.PKT_INTERARRIVAL - 1) * 10 + 5]) / 5
+    pkt_jitter = np.sum(observation[(Feature.PKT_JITTER - 1) * 10 : (Feature.PKT_JITTER - 1) * 10 + 5]) / 5
+    pkt_loss_rate = np.sum(observation[(Feature.PKT_LOSS_RATIO - 1) * 10: (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
+    queuing_delay = np.sum(observation[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
+
+    fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
+
+    return (award - 0.8*fine + 0.2)*5
 
 
 def get_feature_by_index(
@@ -201,16 +221,19 @@ class eval_model:
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
             observations, bw_preds, _, _ = result
+            obsScaler = MinMaxScaler()
+            observations = obsScaler.fit_transform(observations)
             bw_predictions.append(bw_preds)
 
             # returns greedy action
             for observation in observations:
                 if self.__plot_log:
                     # extract rewards
-                    f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
+                    #f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
+                    f_reward = reward_bwe(observation)
                     f_rwds.append(f_reward)
-                    s_rwds.append(s_reward)
-                    l_rwds.append(l_reward)
+                    #s_rwds.append(s_reward)
+                    #l_rwds.append(l_reward)
 
                     # extract features for MI.SHORT_300
                     m_interval = MI.SHORT_300
@@ -239,8 +262,8 @@ class eval_model:
 
         if self.__plot_log:
             f_rwds = np.append(f_rwds[1:], 0)
-            s_rwds = np.append(s_rwds[1:], 0)
-            l_rwds = np.append(l_rwds[1:], 0)
+            #s_rwds = np.append(s_rwds[1:], 0)
+            #l_rwds = np.append(l_rwds[1:], 0)
 
             # scaling
             scaler = MinMaxScaler(feature_range=(0,10))
@@ -289,8 +312,8 @@ class eval_model:
 
             plt.subplot(2, 4, 5)
             plt.plot(x, f_rwds, label="t_reward")
-            plt.plot(x, s_rwds, label="s_reward")
-            plt.plot(x, l_rwds, label="l_reward")
+            #plt.plot(x, s_rwds, label="s_reward")
+            #plt.plot(x, l_rwds, label="l_reward")
             plt.legend()
             plt.ylabel('Reward')
             algo_name = self.__model_filename.split('/')[-1]
@@ -328,52 +351,52 @@ class eval_model:
             plt.legend()
 
             r_preds = np.corrcoef(np.array(predictions_scaled).reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Model-Baseline corrcoef:\n {r_preds}')
+            print(f'Model-Baseline corrcoef:\n {r_preds[0][1]}')
 
             r_pred_f1 = np.corrcoef(smi_f1.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Recv_rate corrcoef:\n {r_pred_f1}')
+            print(f'Baseline-Recv_rate corrcoef:\n {r_pred_f1[0][1]}')
 
             r_pred_f2 = np.corrcoef(smi_f2.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Recv_pkt_amount corrcoef:\n {r_pred_f2}')
+            print(f'Baseline-Recv_pkt_amount corrcoef:\n {r_pred_f2[0][1]}')
 
             r_pred_f3 = np.corrcoef(smi_f3.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Recv_bytes corrcoef:\n {r_pred_f3}')
+            print(f'Baseline-Recv_bytes corrcoef:\n {r_pred_f3[0][1]}')
 
             r_pred_f4 = np.corrcoef(smi_f4.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Queuing_delay corrcoef:\n {r_pred_f4}')
+            print(f'Baseline-Queuing_delay corrcoef:\n {r_pred_f4[0][1]}')
 
             r_pred_f5 = np.corrcoef(smi_f5.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Delay corrcoef:\n {r_pred_f5}')
+            print(f'Baseline-Delay corrcoef:\n {r_pred_f5[0][1]}')
 
             r_pred_f6 = np.corrcoef(smi_f6.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Min_seen_delay corrcoef:\n {r_pred_f6}')
+            print(f'Baseline-Min_seen_delay corrcoef:\n {r_pred_f6[0][1]}')
 
             r_pred_f7 = np.corrcoef(smi_f7.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Delay_ratio corrcoef:\n {r_pred_f7}')
+            print(f'Baseline-Delay_ratio corrcoef:\n {r_pred_f7[0][1]}')
 
             r_pred_f8 = np.corrcoef(smi_f8.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Delay_min_diff corrcoef:\n {r_pred_f8}')
+            print(f'Baseline-Delay_min_diff corrcoef:\n {r_pred_f8[0][1]}')
 
             r_pred_f9 = np.corrcoef(smi_f9.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Pkt_interarrival corrcoef:\n {r_pred_f9}')
+            print(f'Baseline-Pkt_interarrival corrcoef:\n {r_pred_f9[0][1]}')
 
             r_pred_f10 = np.corrcoef(smi_f10.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Pkt_jitter corrcoef:\n {r_pred_f10}')
+            print(f'Baseline-Pkt_jitter corrcoef:\n {r_pred_f10[0][1]}')
 
             r_pred_f11 = np.corrcoef(smi_f11.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Pkt_loss_ratio corrcoef:\n {r_pred_f11}')
+            print(f'Baseline-Pkt_loss_ratio corrcoef:\n {r_pred_f11[0][1]}')
 
             r_pred_f12 = np.corrcoef(smi_f12.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Pkt_ave_loss corrcoef:\n {r_pred_f12}')
+            print(f'Baseline-Pkt_ave_loss corrcoef:\n {r_pred_f12[0][1]}')
 
             r_pred_f13 = np.corrcoef(smi_f13.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Video_pkt_prob corrcoef:\n {r_pred_f13}')
+            print(f'Baseline-Video_pkt_prob corrcoef:\n {r_pred_f13[0][1]}')
 
             r_pred_f14 = np.corrcoef(smi_f14.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Audio_pkt_prob corrcoef:\n {r_pred_f14}')
+            print(f'Baseline-Audio_pkt_prob corrcoef:\n {r_pred_f14[0][1]}')
 
             r_pred_f15 = np.corrcoef(smi_f15.reshape(-1), np.array(bw_predictions_scaled).reshape(-1))
-            print(f'Baseline-Prob_pkt_prob corrcoef:\n {r_pred_f15}')
+            print(f'Baseline-Prob_pkt_prob corrcoef:\n {r_pred_f15[0][1]}')
 
             plt.show()
 
