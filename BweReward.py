@@ -321,17 +321,20 @@ def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> floa
 
         fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
 
-        rewards.append((0.8*award - 0.5*fine)*5)
+        rewards.append((0.7*award - 0.5*fine)*5)
 
-    diff = (rewards[1] - rewards[0])*0.3
+    diff = (rewards[1] - 0.5*rewards[0])
     diff_per = np.abs(diff)/np.abs(rewards[0])
-    if diff_per < 0.1:
+    alpha = 0.6
+    beta = 0.4
+    theta = 0.3
+    if diff_per <= 0.1:
         final_reward = rewards[1]
-    elif 0.1 < diff_per < 0.3:
-        final_reward = rewards[1] - 0.2 * diff
-    elif 0.3 < diff_per < 0.6:
-        final_reward = rewards[1] - 0.4 * diff
+    elif 0.1 < diff_per <= 0.3:
+        final_reward = rewards[0] * (1.1 + alpha * (diff_per - 0.1))
+    elif 0.3 < diff_per <= 0.6:
+        final_reward = rewards[0] * (1.3 + beta * (diff_per - 0.3))
     else:
-        final_reward = rewards[1] - 0.8 * diff
+        final_reward = rewards[0] * (1.6 + alpha * (diff_per - 0.6))
 
     return final_reward

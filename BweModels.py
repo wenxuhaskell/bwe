@@ -61,7 +61,8 @@ class BweDrl:
             # calculate rewards if needed
             if not rewards:
                 rewards = np.array([self._reward_func(o) for o in observations])
-                rewards = np.append(rewards[1:], 0)
+                r_last = rewards[-1]
+                rewards = np.append(rewards[1:], r_last)
 
             start = 0
             end = len(actions)
