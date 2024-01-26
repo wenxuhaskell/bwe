@@ -11,7 +11,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, get_feature, get_feature_for_mi, get_decay_weights, reward_bwe
+from BweReward import Feature, MI, MIType, reward_bwe, reward_qoe_v1
 
 model_filename = ''
 data_filenames =[]
@@ -33,66 +33,6 @@ def lmi_features(feature_vec: List[float]) -> float:
     pkt_loss_rate = np.sum(feature_vec[(Feature.PKT_LOSS_RATIO - 1) * 10 : (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
 
     return 0.6 * np.log(4 * receive_rate + 1) - queuing_delay / 1000 - 10 * pkt_loss_rate
-
-def rewards_qoe(observation: List[float], rf_params: Dict[str, Any]) -> float:
-    qoes = dict(zip(MI, [0.0] * len(MI)))
-    # 1. rate QoE: 0...1
-    qoe_rates = dict(zip(MI, [0.0] * len(MI)))
-    rates = get_feature_for_mi(observation, "RECV_RATE", MIType.ALL)
-    for i, rate in enumerate(rates):
-        rf_params["MAX_RATE"][MI(i + 1)] = max(rf_params["MAX_RATE"][MI(i + 1)], rate)
-        max_rate = rf_params["MAX_RATE"][MI(i + 1)] if rf_params["MAX_RATE"][MI(i + 1)] > 0 else 1
-        # logarithmic nature scaled by the maximum observed rate in this MI
-        qoe_rates[MI(i + 1)] = np.log((np.exp(1) - 1) * (rate / max_rate) + 1)
-
-    # 2. delay QoE: 0...1
-    qoe_delays = dict(zip(MI, [0.0] * len(MI)))
-    delays = get_feature_for_mi(observation, "DELAY", MIType.ALL)
-    min_seen_delays = get_feature_for_mi(observation, "MIN_SEEN_DELAY", MIType.ALL)
-    for i, delay in enumerate(delays):
-        delay += 200  # add a substracted base delay of 200 ms to have an absolute value
-        # d_max - d / d_max - d_min
-        rf_params["MAX_DELAY"][MI(i + 1)] = max(rf_params["MAX_DELAY"][MI(i + 1)], delay)
-        max_delay = rf_params["MAX_DELAY"][MI(i + 1)] if rf_params["MAX_DELAY"][MI(i + 1)] > 0 else delay
-        qoe_delays[MI(i + 1)] = (
-            (max_delay - delay) / (max_delay - min_seen_delays[i]) if max_delay > min_seen_delays[i] else 0
-        )
-
-    # 3. loss QoE: 0...1
-    qoe_losses = dict(zip(MI, [0.0] * len(MI)))
-    losses = get_feature_for_mi(observation, "PKT_LOSS_RATIO", MIType.ALL)
-    for i, loss in enumerate(losses):
-        qoe_losses[MI(i + 1)] = 1 - loss
-
-    # 4. jitter QoE: 0...1
-    qoe_jitters = dict(zip(MI, [0.0] * len(MI)))
-    jitters = get_feature_for_mi(observation, "PKT_JITTER", MIType.ALL)
-    for i, jitter in enumerate(jitters):
-        qoe_jitters[MI(i + 1)] = -0.04 * np.sqrt(min(625, jitter)) + 1
-
-    # combine all QoEs
-    # FIXME: tune the weights!
-    for mi in MI:
-        qoes[mi] = 0.3 * qoe_rates[mi] + 0.3 * qoe_delays[mi] + 0.3 * qoe_losses[mi] + 0.1 * qoe_jitters[mi]
-
-    # QoE long term is more important than short term, 0.66 vs 0.33 SO FAR,
-    # FIXME: tune the weights!
-    short_qoe = 0.0
-    long_qoe = 0.0
-    mi_weights = get_decay_weights(5)
-    mi_weights = np.concatenate((mi_weights, mi_weights))
-    for mi in MI:
-        w = mi_weights[mi - 1]
-        if mi <= MI.SHORT_300:
-            short_qoe += w * qoes[mi]
-        else:
-            long_qoe += w * qoes[mi]
-
-    # final QoE: 0..5
-    final_qoe = 0.0
-    final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
-    final_qoe *= 5
-    return final_qoe, (short_qoe*5), (long_qoe*5)
 
 
 def rewards_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
@@ -229,11 +169,9 @@ class eval_model:
             for observation in observations:
                 if self.__plot_log:
                     # extract rewards
-                    #f_reward, s_reward, l_reward = rewards_qoe(observation, inner_params)
+                    #f_reward, = reward_qoe_v1(observation, inner_params)
                     f_reward = reward_bwe(observation)
                     f_rwds.append(f_reward)
-                    #s_rwds.append(s_reward)
-                    #l_rwds.append(l_reward)
 
                     # extract features for MI.SHORT_300
                     m_interval = MI.SHORT_300
@@ -261,9 +199,7 @@ class eval_model:
         bw_predictions = np.concatenate(bw_predictions)
 
         if self.__plot_log:
-            f_rwds = np.append(f_rwds[1:], 0)
-            #s_rwds = np.append(s_rwds[1:], 0)
-            #l_rwds = np.append(l_rwds[1:], 0)
+            f_rwds = np.append(f_rwds[1:], f_rwds[-1])
 
             # scaling
             scaler = MinMaxScaler(feature_range=(0,10))
@@ -293,7 +229,7 @@ class eval_model:
             plt.plot(x, predictions_scaled, label="estimate")
             plt.plot(x, bw_predictions_scaled, label="baseline")
             plt.legend()
-            plt.ylabel("Estimate")
+            plt.ylabel("Bandwidth")
             plt.title('Estimate divided by 10e6')
 
             algo_name = self.__model_filename.split('/')[-1]
@@ -306,14 +242,12 @@ class eval_model:
             plt.plot(x, predictions_scaled, label="estimate")
             plt.plot(x, bw_predictions_scaled, label="baseline")
             plt.legend()
-            plt.ylabel("Estimate")
+            plt.ylabel("Bandwidth")
             plt.xlabel("Step")
             plt.title('Estimate divided by 10e6')
 
             plt.subplot(2, 4, 5)
-            plt.plot(x, f_rwds, label="t_reward")
-            #plt.plot(x, s_rwds, label="s_reward")
-            #plt.plot(x, l_rwds, label="l_reward")
+            plt.plot(x, f_rwds, label="reward")
             plt.legend()
             plt.ylabel('Reward')
             algo_name = self.__model_filename.split('/')[-1]
@@ -321,9 +255,9 @@ class eval_model:
             plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
 
             plt.subplot(2,4,2)
-            plt.plot(x, smi_f1, label="f1-recv_rate")
-            plt.plot(x, smi_f2, label="f2-recv_pkt_amount")
-            plt.plot(x, smi_f3, label="f3-recv_bytes")
+            plt.plot(x, smi_f1, label="recv_rate")
+            plt.plot(x, smi_f2, label="recv_pkt_amount")
+            plt.plot(x, smi_f3, label="recv_bytes")
             plt.legend()
 
             plt.subplot(2,4,6)

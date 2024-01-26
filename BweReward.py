@@ -179,6 +179,12 @@ class RewardFunction:
                     "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
                     "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
                 }
+            case "QOE_V2":
+                self.reward_func = reward_qoe_v2
+                self.inner_params = {
+                    "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+                    "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+                }
             case _:
                 raise ValueError(f"Unknown reward function name: {reward_func_name}")
 
@@ -297,6 +303,68 @@ def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any]) -> float:
     return final_qoe
 
 
+def reward_qoe_v2(observation: List[float], rf_params: Dict[str, Any]) -> float:
+    qoes = dict(zip(MI, [0.0] * len(MI)))
+    # 1. rate QoE: 0...1
+    qoe_rates = dict(zip(MI, [0.0] * len(MI)))
+    rates = get_feature_for_mi(observation, "RECV_RATE", MIType.ALL)
+    for i, rate in enumerate(rates):
+        # logarithmic nature scaled by the maximum observed rate in this MI
+        qoe_rates[MI(i + 1)] = np.log((np.exp(1) - 1) * rate + 1)
+
+    # 2. delay QoE: 0...1
+    qoe_delays = dict(zip(MI, [0.0] * len(MI)))
+    delays = get_feature_for_mi(observation, "QUEUING_DELAY", MIType.ALL)
+    for i, delay in enumerate(delays):
+        qoe_delays[MI(i + 1)] = 1 - delay
+
+    # 3. loss QoE: 0...1
+    qoe_losses = dict(zip(MI, [0.0] * len(MI)))
+    losses = get_feature_for_mi(observation, "PKT_LOSS_RATIO", MIType.ALL)
+    for i, loss in enumerate(losses):
+        qoe_losses[MI(i + 1)] = 1 - loss
+
+    # 4. jitter QoE: 0...1
+    qoe_jitters = dict(zip(MI, [0.0] * len(MI)))
+    jitters = get_feature_for_mi(observation, "PKT_JITTER", MIType.ALL)
+    for i, jitter in enumerate(jitters):
+        qoe_jitters[MI(i + 1)] = 1 - jitter
+
+    # 5. interarrival time QoE: 0...1
+    qoe_interarrivals = dict(zip(MI, [0.0] * len(MI)))
+    interarrivals = get_feature_for_mi(observation, "PKT_INTERARRIVAL", MIType.ALL)
+    for i, interarrival in enumerate(interarrivals):
+        qoe_interarrivals[MI(i + 1)] = 1 - interarrival
+
+    # combine all QoEs
+    # FIXME: tune the weights!
+    for mi in MI:
+        qoes[mi] = 0.3 * qoe_rates[mi] \
+                   + 0.2 * qoe_delays[mi] \
+                   + 0.3 * qoe_losses[mi] \
+                   + 0.1 * qoe_jitters[mi] \
+                   + 0.1 * qoe_interarrivals[mi]
+
+    # QoE long term is more important than short term, 0.66 vs 0.33 SO FAR,
+    # FIXME: tune the weights!
+    short_qoe = 0.0
+    long_qoe = 0.0
+    mi_weights = get_decay_weights(5)
+    mi_weights = np.concatenate((mi_weights, mi_weights))
+    for mi in MI:
+        w = mi_weights[mi - 1]
+        if mi <= MI.SHORT_300:
+            short_qoe += w * qoes[mi]
+        else:
+            long_qoe += w * qoes[mi]
+
+    # final QoE: 0..5
+    final_qoe = 0.0
+    final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
+    final_qoe *= 5
+    return final_qoe
+
+
 def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
 
     mi_cur = MI.LONG_600
@@ -321,20 +389,9 @@ def reward_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> floa
 
         fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
 
-        rewards.append((0.7*award - 0.5*fine)*5)
+        rewards.append((award - fine)*5)
 
     diff = (2*rewards[1] - rewards[0])
     diff_per = np.abs(diff)/np.abs(rewards[0])
-    alpha = 0.6
-    beta = 0.4
-    theta = 0.3
-    if diff_per <= 0.1:
-        final_reward = rewards[1]
-    elif 0.1 < diff_per <= 0.3:
-        final_reward = rewards[0] * (1.1 + alpha * (diff_per - 0.1))
-    elif 0.3 < diff_per <= 0.6:
-        final_reward = rewards[0] * (1.3 + beta * (diff_per - 0.3))
-    else:
-        final_reward = rewards[0] * (1.6 + alpha * (diff_per - 0.6))
 
     return final_reward
