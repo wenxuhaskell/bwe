@@ -56,8 +56,8 @@ class BweDrl:
             print(f"Worker {self._rank} starts creating MDP dataset...")
             t1 = time.process_time()
             observations, actions, rewards, terminals = load_train_data_from_file(filename)
-            obsScaler = MinMaxScaler()
-            observations = obsScaler.fit_transform(observations)
+#            obsScaler = MinMaxScaler()
+#            observations = obsScaler.fit_transform(observations)
             # calculate rewards if needed
             if not rewards:
                 rewards = np.array([self._reward_func(o) for o in observations])
@@ -344,7 +344,7 @@ def createCQL(params):
         n_action_samples=_n_action_samples,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-#        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
@@ -364,7 +364,7 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
-    lstm_encoder_factory = LSTMEncoderFactory(1)
+#    lstm_encoder_factory = LSTMEncoderFactory(1)
 
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
@@ -375,9 +375,9 @@ def createSAC(params):
         tau=_tau,
         n_critics=_n_critics,
         initial_temperature=_initial_temperature,
-        actor_encoder_factory=lstm_encoder_factory,
-        critic_encoder_factory=lstm_encoder_factory,
-#        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+#        actor_encoder_factory=lstm_encoder_factory,
+#        critic_encoder_factory=lstm_encoder_factory,
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
@@ -419,7 +419,7 @@ def createBCQ(params):
         rl_start_step=_rl_start_step,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-#        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])
@@ -457,7 +457,7 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-#        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
     ).create(device=params['device'])

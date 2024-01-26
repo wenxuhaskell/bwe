@@ -11,7 +11,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_bwe, reward_qoe_v1
+from BweReward import Feature, MI, MIType, reward_qoe_v1
 
 model_filename = ''
 data_filenames =[]
@@ -161,16 +161,13 @@ class eval_model:
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
             observations, bw_preds, _, _ = result
-            obsScaler = MinMaxScaler()
-            observations = obsScaler.fit_transform(observations)
             bw_predictions.append(bw_preds)
 
             # returns greedy action
             for observation in observations:
                 if self.__plot_log:
                     # extract rewards
-                    #f_reward, = reward_qoe_v1(observation, inner_params)
-                    f_reward = reward_bwe(observation)
+                    f_reward = reward_qoe_v1(observation, inner_params)
                     f_rwds.append(f_reward)
 
                     # extract features for MI.SHORT_300
