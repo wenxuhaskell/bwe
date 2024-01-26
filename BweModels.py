@@ -365,7 +365,7 @@ def createSAC(params):
     _temp_learning_rate = params["temp_learning_rate"]
 
 #    lstm_encoder_factory = LSTMEncoderFactory(1)
-
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -375,8 +375,8 @@ def createSAC(params):
         tau=_tau,
         n_critics=_n_critics,
         initial_temperature=_initial_temperature,
-#        actor_encoder_factory=lstm_encoder_factory,
-#        critic_encoder_factory=lstm_encoder_factory,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler()
