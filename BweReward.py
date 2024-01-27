@@ -211,7 +211,7 @@ def reward_r3net(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> fl
 # |q_n - q_{n-1}| - receive rates difference between two steps. ()
 # alpha, beta, eta and phi are hyperparameters impacting training effectiveness.
 #
-# Here we uses the statistic of recent measure intervals (as the feature vectors)
+# Here we use the statistic of recent measure intervals (as the feature vectors)
 #
 def reward_onrl(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> float:
     alpha = 50

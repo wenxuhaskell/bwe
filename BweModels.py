@@ -9,7 +9,8 @@ import math
 from tqdm import tqdm
 from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
-from BweReward import RewardFunction
+from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi
+
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
@@ -63,6 +64,10 @@ class BweDrl:
                 rewards = np.array([self._reward_func(o) for o in observations])
                 r_last = rewards[-1]
                 rewards = np.append(rewards[1:], r_last)
+            # observation
+#            if True:
+#                observations = observations.reshape([len(observations), len(Feature), len(MI)])
+#                observations = np.swapaxes(observations, 1, 2)
 
             start = 0
             end = len(actions)
@@ -364,8 +369,8 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
-#    lstm_encoder_factory = LSTMEncoderFactory(1)
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    ac_encoder_factory = LSTMEncoderFactory(1)
+#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
         gamma=_gamma,
