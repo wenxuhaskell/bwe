@@ -332,7 +332,7 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,64,32])
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -406,7 +406,7 @@ def createBCQ(params):
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,64,32])
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
     
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
@@ -447,6 +447,8 @@ def createDT(params):
     _warmup_steps = params["warmup_steps"]
     _clip_grad_norm = params["clip_grad_norm"]
     _learning_rate = params['learning_rate']
+
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
 
     dt = d3rlpy.algos.DecisionTransformerConfig(
         batch_size=_batch_size,

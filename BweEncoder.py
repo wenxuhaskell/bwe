@@ -41,8 +41,8 @@ class LSTMEncoderWithAction(nn.Module):
         super().__init__()
         self.feature_size = feature_size
         self.fc1 = nn.Linear(observation_shape[0] + action_size, 256)
-        self.fc2 = nn.Linear(256, 64)
-        self.fc3 = nn.Linear(64, 32)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 32)
         self.fc4 = nn.Linear(32, feature_size)
 #        self.rnn_state = (torch.zeros(1, 1, 1).requires_grad_(), torch.zeros(1, 1, 1).requires_grad_())
 
