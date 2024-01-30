@@ -6,10 +6,27 @@ import pathlib
 import json
 import random
 import d3rlpy
+import torch
+import torch.distributed as dist
+
+
+def get_device(is_ddp: bool = False) -> str:
+    is_cuda = torch.cuda.is_available()
+    world_size = 1
+    if is_cuda:
+        rank = d3rlpy.distributed.init_process_group("nccl") if is_ddp else 0
+        device = f"cuda:{rank}"
+        world_size = dist.get_world_size() if is_ddp else 1
+    else:
+        rank = 0
+        device = "cpu:0"
+
+    print(f"Training on {device} with rank {rank} and world_size {world_size}")
+    return device, rank, world_size
 
 
 def load_train_data(
-        datafile: os.PathLike | str,
+    datafile: os.PathLike | str,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     data = _load_data(datafile)
     if data is None:
@@ -23,7 +40,7 @@ def load_train_data(
 
 
 def load_test_data(
-        datafile: os.PathLike | str,
+    datafile: os.PathLike | str,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     data = _load_data(datafile)
     if data is None:
@@ -60,7 +77,7 @@ def get_decay_weights(num_weights: int, start_weight: float = 0.4, ratio: float 
     return weights
 
 
-def load_multiple_files(train_data_dir: str, train_on_max_files: int, random_choice: bool=False):
+def load_multiple_files(train_data_dir: str, train_on_max_files: int, random_choice: bool = False):
     files = sorted(os.listdir(train_data_dir))
     if random_choice:
         random.shuffle(files)
@@ -75,9 +92,7 @@ def load_multiple_files(train_data_dir: str, train_on_max_files: int, random_cho
     return train_data_files
 
 
-def create_mdp_dataset_from_files(train_data_files, rw_func)\
-        -> d3rlpy.dataset.MDPDataset:
-
+def create_mdp_dataset_from_files(train_data_files, rw_func) -> d3rlpy.dataset.MDPDataset:
     observations = []
     actions = []
     rewards = []
@@ -127,9 +142,7 @@ def create_mdp_dataset_from_files(train_data_files, rw_func)\
     return dataset
 
 
-def create_mdp_dataset_from_file(train_data_file, rw_func)\
-        -> d3rlpy.dataset.MDPDataset:
-
+def create_mdp_dataset_from_file(train_data_file, rw_func) -> d3rlpy.dataset.MDPDataset:
     observations_file = []
     actions_file = []
     rewards_file = []
@@ -164,7 +177,6 @@ def create_mdp_dataset_from_file(train_data_file, rw_func)\
 
 
 def load_train_data_from_file(train_data_file):
-
     observations_file = []
     actions_file = []
     rewards_file = []

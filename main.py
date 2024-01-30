@@ -1,26 +1,10 @@
 import argparse
 import json
-import os
 import d3rlpy
 import torch
-import torch.distributed as dist
 
 import BweModels
-
-
-def get_device(is_ddp: bool = False) -> str:
-    is_cuda = torch.cuda.is_available()
-    world_size = 1
-    if is_cuda:
-        rank = d3rlpy.distributed.init_process_group("nccl") if is_ddp else 0
-        device = f"cuda:{rank}"
-        world_size = dist.get_world_size() if is_ddp else 1
-    else:
-        rank = 0
-        device = "cpu:0"
-
-    print(f"Training on {device} with rank {rank} and world_size {world_size}")
-    return device, rank, world_size
+from BweUtils import get_device
 
 
 def main() -> None:
@@ -33,7 +17,7 @@ def main() -> None:
     f = open(args.conf, "r")
     params = json.load(f)
     f.close()
-    
+
     ##
     # add device
     params['ddp'] = args.ddp
