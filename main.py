@@ -1,10 +1,169 @@
 import argparse
 import json
+import os
+from datetime import datetime
+import random
+from typing import Dict, Any
 import d3rlpy
-import torch
+import optuna.exceptions
+import optuna.trial
+from optuna.pruners import MedianPruner
+from optuna.samplers import TPESampler
 
+import torch
+import torch.distributed as dist
+from functools import partial
 import BweModels
+from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
+
+N_TRIALS = 50
+N_STARTUP_TRIALS = 5
+N_EVALUATIONS = 2
+N_TIMESTEPS = int(2e4)
+EVAL_FREQ = int(N_TIMESTEPS / N_EVALUATIONS)
+N_EVAL_EPISODES = 3
+
+def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """Sampler for SAC hyperparameters."""
+    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
+    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
+    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", 1e-4, 1e-2, step=1e-4)
+
+    # Display true values.
+    trial.set_user_attr("tau_", tau)
+    trial.set_user_attr("gamma_", gamma)
+    trial.set_user_attr("actor_learning_rate_", actor_learning_rate)
+    trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
+    trial.set_user_attr("temp_learning_rate_", temp_learning_rate)
+
+    return {
+        "tau": tau,
+        "gamma": gamma,
+        "actor_learning_rate": actor_learning_rate,
+        "critic_learning_rate": critic_learning_rate,
+        "temp_learning_rate": temp_learning_rate
+    }
+
+
+def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """Sampler for CQL hyperparameters."""
+    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
+    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
+    conservative_weight = trial.suggest_float("conservative_weight", 1.0, 10, step=1)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
+    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", 1e-2, 0.1, step=1e-2)
+    alpha_learning_rate = trial.suggest_float("alpha_learning_rate", 1e-4, 0.1, step=1e-4)
+
+    # Display true values.
+    trial.set_user_attr("tau_", tau)
+    trial.set_user_attr("gamma_", gamma)
+    trial.set_user_attr("conservative_weight_", conservative_weight)
+    trial.set_user_attr("actor_learning_rate_", actor_learning_rate)
+    trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
+    trial.set_user_attr("temp_learning_rate_", temp_learning_rate)
+    trial.set_user_attr("alpha_learning_rate_", alpha_learning_rate)
+
+    return {
+        "tau": tau,
+        "gamma": gamma,
+        "conservative_weight": conservative_weight,
+        "actor_learning_rate": actor_learning_rate,
+        "critic_learning_rate": critic_learning_rate,
+        "temp_learning_rate": temp_learning_rate,
+        "alpha_learning_rate": alpha_learning_rate
+    }
+
+
+def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """Sampler for BCQ hyperparameters."""
+    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
+    beta = trial.suggest_float("beta", 0.1, 0.9, step=0.1)
+    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
+    lam = 1.0 - trial.suggest_float("lam", 0.1, 0.9, step=0.1)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
+    imitator_learning_rate = 1.0 - trial.suggest_float("imitator_learning_rate", 1e-4, 1e-2, step=1e-4)
+    action_flexibility = 1.0 - trial.suggest_float("action_flexibility", 1e-2, 0.1, step=1e-2)
+    learning_rate = trial.suggest_float("learning_rate", 1e-4, 0.1, step=1e-4)
+
+    # Display true values.
+    trial.set_user_attr("tau_", tau)
+    trial.set_user_attr("beta_", beta)
+    trial.set_user_attr("gamma_", gamma)
+    trial.set_user_attr("lam_", lam)
+    trial.set_user_attr("actor_learning_rate_", actor_learning_rate)
+    trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
+    trial.set_user_attr("imitator_learning_rate_", imitator_learning_rate)
+    trial.set_user_attr("action_flexibility_", action_flexibility)
+    trial.set_user_attr("learning_rate_", learning_rate)
+
+    return {
+        "tau": tau,
+        "beta": beta,
+        "gamma": gamma,
+        "lam": lam,
+        "actor_learning_rate": actor_learning_rate,
+        "critic_learning_rate": critic_learning_rate,
+        "imitator_learning_rate": imitator_learning_rate,
+        "action_flexibility": action_flexibility,
+        "learning_rate": learning_rate
+    }
+
+
+def objective(drl: BweModels.BweDrl,
+              dataset: d3rlpy.dataset.MDPDataset,
+              params: dict,
+              trial: optuna.Trial) -> float:
+    # Sample hyperparameters.
+    algo_name = drl.get_algo_name().upper()
+    if algo_name == 'CQL':
+        params.update(sample_cql_params(trial))
+    elif algo_name == 'BCQ':
+        params.update(sample_bcq_params(trial))
+    elif algo_name == 'SAC':
+        params.update(sample_SAC_params(trial))
+    else:
+        print("Algorithm is not supported")
+        raise Exception()
+
+    # Create the RL model.
+    drl.create_model(params)
+
+    # create evaluators
+    test_episodes = dataset.episodes[:1]
+    td_eva = BweTDErrorEvaluator(test_episodes, trial)
+    da_eva = d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes)
+    av_eva = d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes)
+    ad_eva = d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes)
+    evaluators = {
+        'td_error': td_eva,
+        'discounted_advantage': da_eva,
+        'average_value': av_eva,
+        'action_diff': ad_eva
+    }
+
+    nan_encountered = False
+    try:
+        drl.train(dataset, evaluators)
+    except optuna.exceptions.TrialPruned as e:
+        print('Pruned')
+        raise optuna.exceptions.TrialPruned()
+    except AssertionError as e:
+        # Sometimes, random hyperparams can generate NaN.
+        print(e)
+        nan_encountered = True
+
+    # Tell the optimizer that the trial failed.
+    if nan_encountered:
+        return float("nan")
+
+    value = td_eva.get_last_td_error()
+    # report the value (contained in evaluator) back to trail?
+    return value
 
 
 def main() -> None:
@@ -18,7 +177,6 @@ def main() -> None:
     params = json.load(f)
     f.close()
 
-    ##
     # add device
     params['ddp'] = args.ddp
     # get devices for training (overwrite the "device" parameter in json file)
@@ -28,28 +186,52 @@ def main() -> None:
         params['rank'] = 0
         params['world_size'] = 1
 
-    evaluator = True
-    if params['algorithm_name'] == 'CQL':
-        algo = BweModels.createCQL(params)
-    elif params['algorithm_name'] == "SAC":
-        algo = BweModels.createSAC(params)
-    elif params['algorithm_name'] == "BCQ":
-        algo = BweModels.createBCQ(params)
-    elif params['algorithm_name'] == "DT":
-        algo = BweModels.createDT(params)
-        # Decision Transformer does not support evaluator
-        evaluator = False
+    # create the DRL object
+    bwe = BweModels.BweDrl(params)
+
+    if params['finetune']:
+        sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
+        # Do not prune before 1/3 of the max budget is used.
+        pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3)
+        # list of training data files
+        filenames = bwe.get_list_data_files()
+        # randomly choose one file
+        filename = random.choice(filenames)
+        # load MDP dataset
+        dataset = bwe.load_MDP_dataset(filename)
+        # create a partial function for optuna
+        objective_cb = partial(objective, bwe, dataset, params.copy())
+        study = optuna.create_study(sampler=sampler, pruner=pruner, direction="minimize")
+        try:
+            study.optimize(objective_cb, n_trials=N_TRIALS, timeout=600)
+        except KeyboardInterrupt:
+            pass
+
+        print("Number of finished trials: ", len(study.trials))
+        t_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
+        print("Number of pruned trials: ", len(study.trials)-len(t_trials))
+        print("Best trial ", study.best_trial)
+        best_trial = study.best_trial
+        print("  value:", best_trial.value)
+
+        print("  Params: ")
+        for key, value in best_trial.params.items():
+            print("    {}: {}".format(key, value))
+
+        print("  User attrs:")
+        for key, value in best_trial.user_attrs.items():
+            print("    {}: {}".format(key, value))
+
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        with open(f"best_trial_parameters_{timestamp}.json", "w") as outfile:
+            json.dump(best_trial.params, outfile)
+        with open(f"best_trial_attributes_{timestamp}.json", "w") as outfile:
+            json.dump(best_trial.user_attrs, outfile)
+
     else:
-        print("Please provide a configuration file with a valid algorithm name!\n")
-        return
+        bwe.create_model(params)
+        bwe.train_model_gradually()
 
-    # train the model
-    bwe = BweModels.BweDrl(params, algo)
-    bwe.train_model_gradually(evaluator)
-
-    # disable it for now
-    if False:
-        bwe.evaluate_model_offline()
 
     if params['ddp'] == True and torch.cuda.is_available():
         print("DDP finishes.")

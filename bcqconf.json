@@ -22,5 +22,7 @@
   "imitator_learning_rate": 0.0001,
   "action_flexibility": 0.05,
   "rl_start_step": 0,
+  "evaluator": true,
+  "finetune": false,
   "device": "cpu:0"
 }

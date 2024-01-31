@@ -15,9 +15,9 @@ from BweUtils import load_train_data, load_multiple_files, load_train_data_from_
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 
-
 class BweDrl:
-    def __init__(self, params, algo: d3rlpy.algos.qlearning.QLearningAlgoBase):
+    def __init__(self, params):
+        self._algo = None
         self._params = params
         self._log_dir = params['log_folder_name']
         self._train_data_dir = params['train_data_folder']
@@ -27,8 +27,9 @@ class BweDrl:
         self._batch_size = params['batch_size']
         self._n_steps_per_epoch = params['n_steps_per_epoch']
         self._dataset_coverage = params['dataset_coverage']
-        self._algo = algo
         self._algo_name = params['algorithm_name']
+        self._evaluator = params['evaluator']
+        self._finetune = params['finetune']
         self._reward_func = RewardFunction(params['reward_func_name'])
         self._device = params['device']
         self._ddp = params['ddp']
@@ -38,88 +39,97 @@ class BweDrl:
         register_encoder_factory(ACEncoderFactory)
         register_encoder_factory(LSTMEncoderFactory)
 
+    # create the model
+    def create_model(self, params=None):
+        if not params:
+            self._params = params
 
+        if self._params['algorithm_name'] == 'CQL':
+            self._algo = createCQL(self._params)
+        elif self._params['algorithm_name'] == "SAC":
+            self._algo = createSAC(self._params)
+        elif self._params['algorithm_name'] == "BCQ":
+            self._algo = createBCQ(self._params)
+        elif self._params['algorithm_name'] == "DT":
+            self._algo = createDT(self._params)
+            # Decision Transformer does not support evaluator
+            print("Decision transformer does not support evaluator")
+            self._evaluator = False
+        else:
+            print("Please provide a configuration file with a valid algorithm name!\n")
+            return
+
+
+    # retrieve the name of algorithms
     def get_algo_name(self) -> str:
         return self._algo_name
 
 
-    def train_model_gradually(self, evaluator: bool):
+    # retieve the list of data files
+    def get_list_data_files(self) -> list:
+        return load_multiple_files(self._train_data_dir, self._train_on_max_files)
 
-        datafiles = load_multiple_files(self._train_data_dir, self._train_on_max_files)
 
+    # create MDP dataset for current worker
+    def load_MDP_dataset(self, filename) -> d3rlpy.dataset.MDPDataset:
+        observations, actions, rewards, terminals = load_train_data_from_file(filename)
+        # calculate rewards if needed
+        if not rewards:
+            rewards = np.array([self._reward_func(o) for o in observations])
+            r_last = rewards[-1]
+            rewards = np.append(rewards[1:], r_last)
+
+        start = 0
+        end = len(actions)
+        # divide dataset
+        if self._world_size > 1:
+            num_transitions = end
+            num_transitions_per_worker = num_transitions // self._world_size
+            start = self._rank * num_transitions_per_worker
+            end = (self._rank + 1) * num_transitions_per_worker
+
+        terminals[end - 1] = 1
+        dataset = d3rlpy.dataset.MDPDataset(
+            observations=observations[start:end],
+            actions=actions[start:end],
+            rewards=rewards[start:end],
+            terminals=terminals[start:end],
+            action_space=d3rlpy.ActionSpace.CONTINUOUS
+        )
+
+        return dataset
+
+    # training using a given MDP dataset
+    def train(self, dataset: d3rlpy.dataset.MDPDataset, evaluators):
         if self._rank == 0:
-            # name of log folder
-            start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            self._log_dir = self._log_dir + "_" + start_date
-            print(f"Worker {self._rank} logging folder {self._log_dir} will be created.")
-
-        for filename in datafiles:
-            print(f"Worker {self._rank} starts creating MDP dataset...")
-            t1 = time.process_time()
-            observations, actions, rewards, terminals = load_train_data_from_file(filename)
-#            obsScaler = MinMaxScaler()
-#            observations = obsScaler.fit_transform(observations)
-            # calculate rewards if needed
-            if not rewards:
-                rewards = np.array([self._reward_func(o) for o in observations])
-                r_last = rewards[-1]
-                rewards = np.append(rewards[1:], r_last)
-            # observation
-#            if True:
-#                observations = observations.reshape([len(observations), len(Feature), len(MI)])
-#                observations = np.swapaxes(observations, 1, 2)
-
-            start = 0
-            end = len(actions)
-            # divide dataset
-            if self._world_size > 1:
-                num_transitions = end
-                num_transitions_per_worker = num_transitions // self._world_size
-                start = self._rank * num_transitions_per_worker
-                end = (self._rank + 1) * num_transitions_per_worker
-
-            terminals[end - 1] = 1
-            dataset = d3rlpy.dataset.MDPDataset(
-                observations=observations[start:end],
-                actions=actions[start:end],
-                rewards=rewards[start:end],
-                terminals=terminals[start:end],
-                action_space=d3rlpy.ActionSpace.CONTINUOUS
-            )
+            n_steps = math.floor(dataset.transition_count * self._dataset_coverage // self._batch_size)
+            n_steps = min(n_steps, 10000)
+            print(
+                f"Worker {self._rank} train {n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.transition_count} records")
 
             t2 = time.process_time()
-            print(f"Worker {self._rank} finishes with creating MDP dataset - {t2-t1} s.")
-
-            n_steps = math.floor(dataset.transition_count*self._dataset_coverage // self._batch_size)
-            n_steps = min(n_steps, 10000)
-            print(f"Worker {self._rank} train {n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.transition_count} records")
-
             test_episodes = dataset.episodes[:1]
             if self._rank == 0:
-                # offline training
-                if evaluator:
+                # offline training for work of rank = 0, logging is enabled
+                # offline training with evaluators
+                if self._evaluator:
                     self._algo.fit(
                         dataset,
                         n_steps=n_steps,
                         n_steps_per_epoch=self._n_steps_per_epoch,
-#                        experiment_name=f"experiment_{start_date}",
                         with_timestamp=False,
-                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir, output_model_name=self._output_model_name),
-                        evaluators={
-                            'td_error': d3rlpy.metrics.TDErrorEvaluator(test_episodes),
-                            'discounted_advantage': d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
-                            'average_value': d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
-                            'action_diff': d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
-                        },
+                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
+                                                         output_model_name=self._output_model_name),
+                        evaluators=evaluators,
                         save_interval=10,
                         enable_ddp=self._ddp,
                     )
                 else:
+                    # offline training without evaluators
                     self._algo.fit(
                         dataset,
                         n_steps=n_steps,
                         n_steps_per_epoch=self._n_steps_per_epoch,
-#                        experiment_name=f"experiment_{start_date}",
                         with_timestamp=False,
                         logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
                                                          output_model_name=self._output_model_name),
@@ -128,7 +138,7 @@ class BweDrl:
                     )
 
             else:
-                # offline training
+                # offline training for other workers rank=1,2,... No logging
                 self._algo.fit(
                     dataset,
                     n_steps=n_steps,
@@ -140,7 +150,29 @@ class BweDrl:
                 )
 
             t3 = time.process_time()
-            print(f'Worker {self._rank} training time: {t3-t2} s')
+            print(f'Worker {self._rank} training time: {t3 - t2} s')
+
+    # train the model using all data files under given folder
+    def train_model_gradually(self):
+        # load the list of files under given folder
+        datafiles = self.get_list_data_files()
+        if self._rank == 0:
+            # name of log folder
+            start_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            self._log_dir = self._log_dir + "_" + start_date
+            print(f"Worker {self._rank} logging folder {self._log_dir} will be created.")
+
+        for file in datafiles:
+            dataset = self.load_MDP_dataset(file)
+            test_episodes = dataset.episodes[:1]
+            evaluators = {
+                'td_error' : d3rlpy.metrics.evaluators.TDErrorEvaluator(test_episodes),
+                'discounted_advantage' : d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes),
+                'average_value' : d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes),
+                'action_diff' : d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes),
+            }
+
+            self.train(dataset, evaluators)
 
 #            print(f"Worker {self._rank} saves the trained model. Train data file {filename}")
 #            policy_file_name = self._log_dir + '/' + self._output_model_name + '.onnx'
