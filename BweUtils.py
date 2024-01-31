@@ -176,6 +176,44 @@ def create_mdp_dataset_from_file(train_data_file, rw_func) -> d3rlpy.dataset.MDP
     return dataset
 
 
+def create_gym_dataset_from_file(train_data_file, rw_func):
+
+    observations_file = []
+    actions_file = []
+    rewards_file = []
+    terminals_file = []
+    print(f"Load file {train_data_file}...")
+    ext = pathlib.Path(train_data_file).suffix
+    if ext.upper() == '.NPZ':
+        loaded = np.load(train_data_file, 'rb')
+        observations_file = np.array(loaded['obs'])
+        actions_file = np.array(loaded['acts'])
+        terminals_file = np.array(loaded['terms'])
+        if 'rws' in loaded:
+            rewards_file = np.array(loaded['rws'])
+    elif ext.upper() == '.JSON':
+        observations_file, actions_file, _, _ = load_train_data(train_data_file)
+        terminals_file = np.zeros(len(observations_file))
+        terminals_file[-1] = 1
+
+    if not rewards_file:
+        rewards_file = np.array([rw_func(o) for o in observations_file])
+    # remove the first reward since it corresponds to the observation before the first observation.
+    rewards_file = np.append(rewards_file[1:], rewards_file[-1])
+
+    # prepare next_observations
+    next_observations_file = np.copy(observations_file[1:])
+    next_observations_file = np.append(next_observations_file, next_observations_file[-1])
+    dataset = {'observations': observations_file,
+               'next_observations': next_observations_file,
+               'actions': actions_file,
+               'rewards': rewards_file,
+               'terminals': terminals_file}
+
+
+    return dataset
+
+
 def load_train_data_from_file(train_data_file):
     observations_file = []
     actions_file = []
