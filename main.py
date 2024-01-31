@@ -17,20 +17,17 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 50
+N_TRIALS = 100
 N_STARTUP_TRIALS = 5
-N_EVALUATIONS = 2
-N_TIMESTEPS = int(2e4)
-EVAL_FREQ = int(N_TIMESTEPS / N_EVALUATIONS)
-N_EVAL_EPISODES = 3
+
 
 def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for SAC hyperparameters."""
-    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
-    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
-    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
-    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
-    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", 1e-4, 1e-2, step=1e-4)
+    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
+    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-4, high=1e-2, step=1e-4)
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -50,13 +47,13 @@ def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
 
 def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for CQL hyperparameters."""
-    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
-    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
-    conservative_weight = trial.suggest_float("conservative_weight", 1.0, 10, step=1)
-    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
-    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
-    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", 1e-2, 0.1, step=1e-2)
-    alpha_learning_rate = trial.suggest_float("alpha_learning_rate", 1e-4, 0.1, step=1e-4)
+    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
+    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
+    conservative_weight = trial.suggest_float("conservative_weight", low=1.0, high=10, step=1)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-2, high=0.1, step=1e-2)
+    alpha_learning_rate = trial.suggest_float("alpha_learning_rate", low=1e-4, high=0.1, step=1e-4)
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -80,15 +77,15 @@ def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
 
 def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for BCQ hyperparameters."""
-    tau = trial.suggest_float("tau", 1e-3, 1e-2, step=1e-3)
-    beta = trial.suggest_float("beta", 0.1, 0.9, step=0.1)
-    gamma = 1.0 - trial.suggest_float("gamma", 1e-2, 0.1, step=1e-2)
+    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
+    beta = trial.suggest_float("beta", low=0.1, high=0.9, step=0.1)
+    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
     lam = 1.0 - trial.suggest_float("lam", 0.1, 0.9, step=0.1)
-    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", 1e-4, 1e-2, step=1e-4)
-    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", 1e-4, 1e-2, step=1e-4)
-    imitator_learning_rate = 1.0 - trial.suggest_float("imitator_learning_rate", 1e-4, 1e-2, step=1e-4)
-    action_flexibility = 1.0 - trial.suggest_float("action_flexibility", 1e-2, 0.1, step=1e-2)
-    learning_rate = trial.suggest_float("learning_rate", 1e-4, 0.1, step=1e-4)
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    imitator_learning_rate = 1.0 - trial.suggest_float("imitator_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    action_flexibility = 1.0 - trial.suggest_float("action_flexibility", low=1e-2, high=0.1, step=1e-2)
+    learning_rate = trial.suggest_float("learning_rate", low=1e-4, high=0.1, step=1e-4)
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -125,7 +122,7 @@ def objective(drl: BweModels.BweDrl,
     elif algo_name == 'BCQ':
         params.update(sample_bcq_params(trial))
     elif algo_name == 'SAC':
-        params.update(sample_SAC_params(trial))
+        params.update(sample_sac_params(trial))
     else:
         print("Algorithm is not supported")
         raise Exception()
@@ -192,7 +189,7 @@ def main() -> None:
     if params['finetune']:
         sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
         # Do not prune before 1/3 of the max budget is used.
-        pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3)
+        pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2)
         # list of training data files
         filenames = bwe.get_list_data_files()
         # randomly choose one file
@@ -208,9 +205,9 @@ def main() -> None:
             pass
 
         print("Number of finished trials: ", len(study.trials))
-        t_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
-        print("Number of pruned trials: ", len(study.trials)-len(t_trials))
-        print("Best trial ", study.best_trial)
+        completed_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
+        print("Number of pruned trials: ", len(study.trials)-len(completed_trials))
+
         best_trial = study.best_trial
         print("  value:", best_trial.value)
 
@@ -223,9 +220,13 @@ def main() -> None:
             print("    {}: {}".format(key, value))
 
         timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        with open(f"best_trial_parameters_{timestamp}.json", "w") as outfile:
+        with open(f"./trials/best_trial_params_{timestamp}.json", "w") as outfile:
+            best_trial.params['completed'] = len(completed_trials)
+            best_trial.params['pruned'] = len(study.trials) - len(completed_trials)
             json.dump(best_trial.params, outfile)
-        with open(f"best_trial_attributes_{timestamp}.json", "w") as outfile:
+        with open(f"./trials/best_trial_attrs_{timestamp}.json", "w") as outfile:
+            best_trial.user_attrs['complete'] = len(completed_trials)
+            best_trial.user_attrs['pruned'] = len(study.trials) - len(completed_trials)
             json.dump(best_trial.user_attrs, outfile)
 
     else:
