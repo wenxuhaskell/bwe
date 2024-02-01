@@ -6,7 +6,7 @@ import time
 import numpy as np
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from BweReward import reward_qoe_v1
+from BweReward import reward_qoe_v1, MI
 
 def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
     try:
@@ -37,7 +37,11 @@ def load_train_data(
 def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     # load the log file and prepare the dataset
     observations_file, actions_file, _, _ = load_train_data(filename)
-    rewards_file = [reward_qoe_v1(o) for o in observations_file]
+    inner_params = {
+        "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+        "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+    }
+    rewards_file = [reward_qoe_v1(o, inner_params) for o in observations_file]
     assert len(observations_file) > 0, f"File {filename} is empty"
     obs_min = np.min(observations_file, axis=0)
     obs_max = np.max(observations_file, axis=0)
