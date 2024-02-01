@@ -261,56 +261,55 @@ class BweDrl:
 
     # training using a given MDP dataset
     def train(self, dataset: d3rlpy.dataset.MDPDataset, evaluators):
+        n_steps = math.floor(dataset.transition_count * self._dataset_coverage // self._batch_size)
+        n_steps = min(n_steps, 10000)
+        print(
+            f"Worker {self._rank} train {n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.transition_count} records")
+
+        t2 = time.process_time()
+        test_episodes = dataset.episodes[:1]
         if self._rank == 0:
-            n_steps = math.floor(dataset.transition_count * self._dataset_coverage // self._batch_size)
-            n_steps = min(n_steps, 10000)
-            print(
-                f"Worker {self._rank} train {n_steps} steps, {self._n_steps_per_epoch} steps per epoch for {dataset.transition_count} records")
-
-            t2 = time.process_time()
-            test_episodes = dataset.episodes[:1]
-            if self._rank == 0:
-                # offline training for work of rank = 0, logging is enabled
-                # offline training with evaluators
-                if self._evaluator:
-                    self._algo.fit(
-                        dataset,
-                        n_steps=n_steps,
-                        n_steps_per_epoch=self._n_steps_per_epoch,
-                        with_timestamp=False,
-                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
-                                                         output_model_name=self._output_model_name),
-                        evaluators=evaluators,
-                        save_interval=10,
-                        enable_ddp=self._ddp,
-                    )
-                else:
-                    # offline training without evaluators
-                    self._algo.fit(
-                        dataset,
-                        n_steps=n_steps,
-                        n_steps_per_epoch=self._n_steps_per_epoch,
-                        with_timestamp=False,
-                        logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
-                                                         output_model_name=self._output_model_name),
-                        save_interval=10,
-                        enable_ddp=self._ddp,
-                    )
-
-            else:
-                # offline training for other workers rank=1,2,... No logging
+            # offline training for work of rank = 0, logging is enabled
+            # offline training with evaluators
+            if self._evaluator:
                 self._algo.fit(
                     dataset,
                     n_steps=n_steps,
                     n_steps_per_epoch=self._n_steps_per_epoch,
                     with_timestamp=False,
-                    logger_adapter=d3rlpy.logging.NoopAdapterFactory(),
-                    evaluators={},
+                    logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
+                                                    output_model_name=self._output_model_name),
+                    evaluators=evaluators,
+                    save_interval=10,
                     enable_ddp=self._ddp,
                 )
+            else:
+                # offline training without evaluators
+                self._algo.fit(
+                    dataset,
+                    n_steps=n_steps,
+                    n_steps_per_epoch=self._n_steps_per_epoch,
+                    with_timestamp=False,
+                    logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
+                                                    output_model_name=self._output_model_name),
+                    save_interval=10,
+                    enable_ddp=self._ddp,
+                )
+        else:
+            # offline training for other workers rank=1,2,... No logging
+            self._algo.fit(
+                dataset,
+                n_steps=n_steps,
+                n_steps_per_epoch=self._n_steps_per_epoch,
+                with_timestamp=False,
+                logger_adapter=d3rlpy.logging.NoopAdapterFactory(),
+                evaluators={},
+                enable_ddp=self._ddp,
+            )
 
-            t3 = time.process_time()
-            print(f'Worker {self._rank} training time: {t3 - t2} s')
+        t3 = time.process_time()
+        print(f'Worker {self._rank} training time: {t3 - t2} s')
+
 
     # train the model using all data files under given folder
     def train_model_gradually(self):
@@ -541,7 +540,7 @@ def createCQL(params):
         n_action_samples=_n_action_samples,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
@@ -574,7 +573,7 @@ def createSAC(params):
         initial_temperature=_initial_temperature,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -616,7 +615,7 @@ def createBCQ(params):
         rl_start_step=_rl_start_step,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -656,7 +655,7 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])

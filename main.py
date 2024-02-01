@@ -17,7 +17,7 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 5000
+N_TRIALS = 500
 N_STARTUP_TRIALS = 5
 
 

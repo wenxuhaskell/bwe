@@ -23,6 +23,5 @@
   "action_flexibility": 0.05,
   "rl_start_step": 0,
   "evaluator": true,
-  "finetune": true,
-  "device": "cuda:1"
+  "finetune": false
 }
