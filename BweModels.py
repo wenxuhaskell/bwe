@@ -15,8 +15,82 @@ from BweUtils import load_train_data, load_multiple_files, load_train_data_from_
 from BweLogger import BweAdapterFactory
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 
-OBSERVATION_MAX = []
-OBSERVATION_MIN = []
+OBSERVATION_MIN = [    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    -2187.5,        -2186.0,         -2188.0,         -2188.0,
+    -2188.0,         -2179.538461540, -2179.538461540, -2179.818181820,
+    -2179.5,        -2179.538461540, -1992.0,         -1992.0,
+    -1992.0,         -1992.0,         -1992.0,         -1992.0,
+    -1992.0,         -1992.0,         -1992.0,         -1992.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0,             0.0,             0.0,
+    0.0,             0.0        ]
+OBSERVATION_MAX = [2.29611867e+08, 2.29611867e+08, 2.29611867e+08, 2.29611867e+08,
+     2.25766133e+08, 3.11890800e+07, 3.11692800e+07, 3.11692800e+07,
+     3.11750267e+07, 3.12027333e+07, 1.74800000e+03, 1.74800000e+03,
+     1.74800000e+03, 1.74800000e+03, 1.71900000e+03, 2.86700000e+03,
+     2.86600000e+03, 2.86600000e+03, 2.86600000e+03, 2.86800000e+03,
+     1.72208900e+06, 1.72208900e+06, 1.72208900e+06, 1.72208900e+06,
+     1.69324600e+06, 2.33918100e+06, 2.33769600e+06, 2.33769600e+06,
+     2.33812700e+06, 2.34020500e+06, 8.02900000e+03, 8.07168421e+03,
+     8.07168421e+03, 7.81300000e+03, 7.67600000e+03, 8.02900000e+03,
+     8.07168421e+03, 7.69900000e+03, 7.67600000e+03, 7.67821739e+03,
+     8.02700000e+03, 8.06968421e+03, 8.06968421e+03, 7.78600000e+03,
+     7.66500000e+03, 8.02700000e+03, 8.06968421e+03, 7.66500000e+03,
+     7.66500000e+03, 7.66721739e+03, 2.00000000e+02, 2.00000000e+02,
+     2.00000000e+02, 2.00000000e+02, 2.00000000e+02, 2.00000000e+02,
+     2.00000000e+02, 2.00000000e+02, 2.00000000e+02, 2.00000000e+02,
+     4.33642857e+02, 3.84840000e+02, 4.16592593e+02, 2.33040816e+02,
+     4.48111111e+02, 5.52259681e+02, 6.04000000e+02, 8.30888889e+02,
+     6.04000000e+02, 5.82626424e+02, 4.70979730e+03, 4.08230645e+03,
+     4.70979730e+03, 4.70979730e+03, 4.33043019e+03, 6.00428238e+03,
+     5.85539306e+03, 5.99811719e+03, 6.00122078e+03, 6.00122078e+03,
+     7.72100000e+03, 7.72100000e+03, 7.72100000e+03, 7.72100000e+03,
+     7.30600000e+03, 7.72100000e+03, 4.66200000e+03, 7.72100000e+03,
+     7.72100000e+03, 7.72100000e+03, 5.64940320e+03, 6.11731487e+03,
+     5.64940320e+03, 3.52382534e+03, 3.94350000e+03, 5.64940320e+03,
+     5.64940320e+03, 6.66000312e+03, 6.66000312e+03, 3.83600000e+03,
+     9.99444753e-01, 9.98940678e-01, 9.98676198e-01, 9.97765363e-01,
+     9.99449642e-01, 9.99444753e-01, 9.98676198e-01, 9.99205298e-01,
+     9.99205298e-01, 9.98684211e-01, 1.88600000e+03, 1.88600000e+03,
+     1.88600000e+03, 1.88600000e+03, 1.88600000e+03, 1.88600000e+03,
+     1.88600000e+03, 1.88600000e+03, 1.88600000e+03, 1.88600000e+03,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00, 1.00000000e+00, 1.00000000e+00,
+     1.00000000e+00, 1.00000000e+00]
 
 OBSERVATION_MEAN = [1.93663500e+06, 1.77384042e+06,  1.78181603e+06,  1.74979287e+06,
     1.72435037e+06,  1.76951604e+06,  1.73935227e+06,  1.73589912e+06,
@@ -96,10 +170,11 @@ OBSERVATION_STD = [ 1.46588941e+06, 1.35396780e+06, 1.36271677e+06, 1.35079649e+
     3.90804436e-02, 2.14171127e-02, 2.16734777e-02, 2.18111491e-02,
     2.17950330e-02, 2.17156514e-02 ]
 
-ACTION_MAX = 62000000.0
+ACTION_MAX = 61662000.0
 ACTION_MIN = 0.0
-REWARD_MAX = 6.0
-REWARD_MIN = 1.0
+REWARD_MAX = 5.0
+REWARD_MIN = 0.0
+
 class BweDrl:
     def __init__(self, params):
         self._algo = None
@@ -449,7 +524,7 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -466,7 +541,7 @@ def createCQL(params):
         n_action_samples=_n_action_samples,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=np.array(OBSERVATION_MEAN), std=np.array(OBSERVATION_STD)),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
@@ -499,7 +574,7 @@ def createSAC(params):
         initial_temperature=_initial_temperature,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=np.array(OBSERVATION_MEAN), std=np.array(OBSERVATION_STD)),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -523,7 +598,7 @@ def createBCQ(params):
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
@@ -541,7 +616,7 @@ def createBCQ(params):
         rl_start_step=_rl_start_step,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=np.array(OBSERVATION_MEAN), std=np.array(OBSERVATION_STD)),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -565,7 +640,7 @@ def createDT(params):
     _clip_grad_norm = params["clip_grad_norm"]
     _learning_rate = params['learning_rate']
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256,32])
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
 
     dt = d3rlpy.algos.DecisionTransformerConfig(
         batch_size=_batch_size,
@@ -581,7 +656,7 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=np.array(OBSERVATION_MEAN), std=np.array(OBSERVATION_STD)),
+        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MAX, maximum=OBSERVATION_MIN),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
