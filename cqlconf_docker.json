@@ -1,6 +1,6 @@
 {
   "algorithm_name":"CQL",
-  "train_data_folder": "test_dataset",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
   "train_on_max_files": 100,
   "reward_func_name": "qoe_v1",
@@ -22,5 +22,6 @@
   "temp_learning_rate": 0.0001,
   "alpha_learning_rate": 0.0001,
   "evaluator": true,
-  "finetune": true
+  "finetune": true,
+  "device": "cuda:0"
 }
