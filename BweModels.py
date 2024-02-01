@@ -401,8 +401,8 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
-    ac_encoder_factory = LSTMEncoderFactory(1)
-#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+#    ac_encoder_factory = LSTMEncoderFactory(1)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
         gamma=_gamma,

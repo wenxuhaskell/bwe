@@ -17,7 +17,7 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 100
+N_TRIALS = 50
 N_STARTUP_TRIALS = 5
 
 
@@ -200,7 +200,7 @@ def main() -> None:
         objective_cb = partial(objective, bwe, dataset, params.copy())
         study = optuna.create_study(sampler=sampler, pruner=pruner, direction="minimize")
         try:
-            study.optimize(objective_cb, n_trials=N_TRIALS, timeout=600)
+            study.optimize(objective_cb, n_trials=N_TRIALS)
         except KeyboardInterrupt:
             pass
 
@@ -219,14 +219,26 @@ def main() -> None:
         for key, value in best_trial.user_attrs.items():
             print("    {}: {}".format(key, value))
 
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        with open(f"./trials/best_trial_params_{timestamp}.json", "w") as outfile:
-            best_trial.params['completed'] = len(completed_trials)
-            best_trial.params['pruned'] = len(study.trials) - len(completed_trials)
+
+        num_completed = len(completed_trials)
+        num_pruned = len(study.trials) - len(completed_trials)
+        ts_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        
+        best_trial.params['completed'] = num_completed
+        best_trial.params['pruned'] = num_pruned
+        best_trial.params['timestamp'] = ts_str
+        
+        best_trial.user_attrs['completed'] = num_completed
+        best_trial.user_attrs['pruned'] = num_pruned
+        best_trial.user_attrs['timestamp'] = ts_str
+        
+        params_filename = f"./trials/{params['algorithm_name']}_params.json"
+        attrs_filename = f"./trials/{params['algorithm_name']}_attrs.json"
+        with open(params_filename, "a") as outfile:
+            outfile.write('\n')
             json.dump(best_trial.params, outfile)
-        with open(f"./trials/best_trial_attrs_{timestamp}.json", "w") as outfile:
-            best_trial.user_attrs['complete'] = len(completed_trials)
-            best_trial.user_attrs['pruned'] = len(study.trials) - len(completed_trials)
+        with open(attrs_filename, "a") as outfile:
+            outfile.write('\n') 
             json.dump(best_trial.user_attrs, outfile)
 
     else:

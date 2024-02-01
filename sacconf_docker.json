@@ -18,5 +18,6 @@
   "critic_learning_rate": 0.0003,
   "temp_learning_rate": 0.0003,
   "evaluator": true,
-  "finetune": false
+  "finetune": true,
+  "device": "cuda:2"
 }
