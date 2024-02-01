@@ -17,7 +17,7 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 50
+N_TRIALS = 30
 N_STARTUP_TRIALS = 5
 
 
@@ -223,22 +223,22 @@ def main() -> None:
         num_completed = len(completed_trials)
         num_pruned = len(study.trials) - len(completed_trials)
         ts_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        
+
         best_trial.params['completed'] = num_completed
         best_trial.params['pruned'] = num_pruned
         best_trial.params['timestamp'] = ts_str
-        
+
         best_trial.user_attrs['completed'] = num_completed
         best_trial.user_attrs['pruned'] = num_pruned
         best_trial.user_attrs['timestamp'] = ts_str
-        
+
         params_filename = f"./trials/{params['algorithm_name']}_params.json"
         attrs_filename = f"./trials/{params['algorithm_name']}_attrs.json"
         with open(params_filename, "a") as outfile:
             outfile.write('\n')
             json.dump(best_trial.params, outfile)
         with open(attrs_filename, "a") as outfile:
-            outfile.write('\n') 
+            outfile.write('\n')
             json.dump(best_trial.user_attrs, outfile)
 
     else:
