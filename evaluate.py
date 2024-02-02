@@ -109,7 +109,7 @@ class eval_model:
                                                 filetypes=(("Json files", "*.json"), ("Npz files", "*.npz")))
 
     def ask_plot_log(self):
-        self.__plot_log = messagebox.askyesno("Plot log file?")
+        self.__plot_log = messagebox.askyesno("Plot features?")
 
     def eval_model(self):
         if self.__model_filename == '':
