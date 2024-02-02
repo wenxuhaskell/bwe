@@ -166,10 +166,6 @@ class eval_model:
             # returns greedy action
             for observation in observations:
                 if self.__plot_log:
-                    # extract rewards
-                    f_reward = reward_qoe_v1(observation, inner_params)
-                    f_rwds.append(f_reward)
-
                     # extract features for MI.SHORT_300
                     m_interval = MI.SHORT_300
                     smi_f1.append(get_feature_by_index(observation, Feature.RECV_RATE, m_interval))
@@ -188,16 +184,19 @@ class eval_model:
                     smi_f14.append(get_feature_by_index(observation, Feature.AUDIO_PKT_PROB, m_interval))
                     smi_f15.append(get_feature_by_index(observation, Feature.PROB_PKT_PROB, m_interval))
 
+                # extract rewards
+                f_reward = reward_qoe_v1(observation, inner_params)
+                f_rwds.append(f_reward)
+
                 # add batch dimension for prediction
                 observation = observation.reshape((1, len(observation))).astype(np.float32)
                 prediction = algo.predict(observation)[0]
                 predictions.append(prediction)
 
         bw_predictions = np.concatenate(bw_predictions)
+        f_rwds = np.append(f_rwds[1:], f_rwds[-1])
 
         if self.__plot_log:
-            f_rwds = np.append(f_rwds[1:], f_rwds[-1])
-
             # scaling
             scaler = MinMaxScaler(feature_range=(0,10))
             smi_f1 = scaler.fit_transform(np.array(smi_f1).reshape(-1,1))
@@ -223,15 +222,22 @@ class eval_model:
 
 
         if not self.__plot_log:
+            plt.subplot(2, 1, 1)
             plt.plot(x, predictions_scaled, label="estimate")
             plt.plot(x, bw_predictions_scaled, label="baseline")
             plt.legend()
             plt.ylabel("Bandwidth")
+            plt.xlabel("Step")
             plt.title('Estimate divided by 10e6')
 
+            plt.subplot(2, 1, 2)
+            plt.plot(x, f_rwds, label="reward")
+            plt.legend()
+            plt.ylabel('Reward')
             algo_name = self.__model_filename.split('/')[-1]
             log_file_name = filename.split('/')[-1]
             plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
+
             plt.show()
 
         else:
