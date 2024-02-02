@@ -43,7 +43,7 @@ class BweTuner:
         objective: Callable[[optuna.Trial], Union[float, Sequence[float]]],
         n_trials: int | None = None,
         n_jobs: int = -1,
-    ) -> optuna.trial.FrozenTrial:
+    ) -> optuna.study.Study:
         # create study
         study = optuna.create_study(
             study_name=self.study_name,
@@ -72,4 +72,4 @@ class BweTuner:
             f"    {chr(10).join(f'{key}: {value}' for key, value in study.best_trial.user_attrs.items())}"
         )
 
-        return study.best_trial
+        return study

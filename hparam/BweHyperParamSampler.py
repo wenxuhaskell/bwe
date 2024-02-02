@@ -36,7 +36,7 @@ class CQLSampler(BweHyperParamSampler):
         # For Q-functions, let's select the factory type but use its default parameters for now.
         q_func_factory = self.create_q_func_factory(trial.suggest_categorical("q_func_factory", ["mean", "qr", "iqn"]))
 
-        batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024, 2048, 4096])
+        batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024, 2048])
         gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
         # target network sync update not Polyak update as for DQN
         tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
@@ -79,7 +79,7 @@ class CQLSampler(BweHyperParamSampler):
     # FIXME: move to optuna.utils submodule later
     def suggest_net_encoder_factory(self, trial: optuna.Trial) -> d3rlpy.models.encoders.EncoderFactory:
         hidden_layer_num = trial.suggest_categorical("hidden_layer_num", [1, 2, 3, 5, 10])
-        hidden_layer_size = trial.suggest_categorical("hidden_layer_size", [32, 64, 128, 256, 512, 1024])
+        hidden_layer_size = trial.suggest_categorical("hidden_layer_size", [32, 64, 128, 256, 512])
         # swish is softmax as far as I got it
         activation_function = trial.suggest_categorical(
             "activation_function", ["relu", "tanh", "swish", "gelu", "geglu"]

@@ -7,7 +7,7 @@ from typing import Dict, Any
 import d3rlpy
 import optuna.exceptions
 import optuna.trial
-from optuna.pruners import MedianPruner
+from optuna.pruners import MedianPruner, PatientPruner
 from optuna.samplers import TPESampler
 
 import torch
@@ -23,38 +23,42 @@ N_STARTUP_TRIALS = 5
 
 def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for SAC hyperparameters."""
-    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
-    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
+    tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
+    gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-4, high=1e-2, step=1e-4)
-
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    
     # Display true values.
     trial.set_user_attr("tau_", tau)
     trial.set_user_attr("gamma_", gamma)
     trial.set_user_attr("actor_learning_rate_", actor_learning_rate)
     trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
     trial.set_user_attr("temp_learning_rate_", temp_learning_rate)
-
+    trial.set_user_attr("batch_size_", batch_size)
+    
     return {
         "tau": tau,
         "gamma": gamma,
         "actor_learning_rate": actor_learning_rate,
         "critic_learning_rate": critic_learning_rate,
-        "temp_learning_rate": temp_learning_rate
+        "temp_learning_rate": temp_learning_rate,
+        "batch_size": batch_size
     }
 
 
 def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for CQL hyperparameters."""
-    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
-    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
-    conservative_weight = trial.suggest_float("conservative_weight", low=1.0, high=10, step=1)
+    tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
+    gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
+    conservative_weight = trial.suggest_categorical("conservative_weight", [1.0, 5.0, 10.0])
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-2, high=0.1, step=1e-2)
     alpha_learning_rate = trial.suggest_float("alpha_learning_rate", low=1e-4, high=0.1, step=1e-4)
-
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    
     # Display true values.
     trial.set_user_attr("tau_", tau)
     trial.set_user_attr("gamma_", gamma)
@@ -63,7 +67,8 @@ def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
     trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
     trial.set_user_attr("temp_learning_rate_", temp_learning_rate)
     trial.set_user_attr("alpha_learning_rate_", alpha_learning_rate)
-
+    trial.set_user_attr("batch_size_", batch_size)
+    
     return {
         "tau": tau,
         "gamma": gamma,
@@ -71,22 +76,24 @@ def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
         "actor_learning_rate": actor_learning_rate,
         "critic_learning_rate": critic_learning_rate,
         "temp_learning_rate": temp_learning_rate,
-        "alpha_learning_rate": alpha_learning_rate
+        "alpha_learning_rate": alpha_learning_rate,
+        "batch_size": batch_size
     }
 
 
 def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for BCQ hyperparameters."""
-    tau = trial.suggest_float("tau", low=1e-3, high=1e-2, step=1e-3)
+    tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
+    gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     beta = trial.suggest_float("beta", low=0.1, high=0.9, step=0.1)
-    gamma = 1.0 - trial.suggest_float("gamma", low=1e-2, high=0.1, step=1e-2)
     lam = 1.0 - trial.suggest_float("lam", 0.1, 0.9, step=0.1)
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     imitator_learning_rate = 1.0 - trial.suggest_float("imitator_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     action_flexibility = 1.0 - trial.suggest_float("action_flexibility", low=1e-2, high=0.1, step=1e-2)
     learning_rate = trial.suggest_float("learning_rate", low=1e-4, high=0.1, step=1e-4)
-
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    
     # Display true values.
     trial.set_user_attr("tau_", tau)
     trial.set_user_attr("beta_", beta)
@@ -97,6 +104,7 @@ def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
     trial.set_user_attr("imitator_learning_rate_", imitator_learning_rate)
     trial.set_user_attr("action_flexibility_", action_flexibility)
     trial.set_user_attr("learning_rate_", learning_rate)
+    trial.set_user_attr("batch_size_", batch_size)
 
     return {
         "tau": tau,
@@ -107,7 +115,8 @@ def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
         "critic_learning_rate": critic_learning_rate,
         "imitator_learning_rate": imitator_learning_rate,
         "action_flexibility": action_flexibility,
-        "learning_rate": learning_rate
+        "learning_rate": learning_rate,
+        "batch_size": batch_size
     }
 
 
@@ -163,6 +172,45 @@ def objective(drl: BweModels.BweDrl,
     return value
 
 
+def save_best_trail(study, algo_name):
+    print("Number of finished trials: ", len(study.trials))
+    completed_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
+    print("Number of pruned trials: ", len(study.trials)-len(completed_trials))
+
+    best_trial = study.best_trial
+    print("  value:", best_trial.value)
+
+    print("  Params: ")
+    for key, value in best_trial.params.items():
+        print("    {}: {}".format(key, value))
+
+    print("  User attrs:")
+    for key, value in best_trial.user_attrs.items():
+        print("    {}: {}".format(key, value))
+
+
+    num_completed = len(completed_trials)
+    num_pruned = len(study.trials) - len(completed_trials)
+    ts_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+    best_trial.params['completed'] = num_completed
+    best_trial.params['pruned'] = num_pruned
+    best_trial.params['timestamp'] = ts_str
+
+    best_trial.user_attrs['completed'] = num_completed
+    best_trial.user_attrs['pruned'] = num_pruned
+    best_trial.user_attrs['timestamp'] = ts_str
+
+    params_filename = f"./trials/{algo_name}_params.json"
+    attrs_filename = f"./trials/{algo_name}_attrs.json"
+    with open(params_filename, "a") as outfile:
+        outfile.write('\n')
+        json.dump(best_trial.params, outfile)
+    with open(attrs_filename, "a") as outfile:
+        outfile.write('\n')
+        json.dump(best_trial.user_attrs, outfile)
+    
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf", type=str, default="cqlconf.json")
@@ -189,7 +237,8 @@ def main() -> None:
     if params['finetune']:
         sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
         # Do not prune before 1/3 of the max budget is used.
-        pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2)
+        #pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2)
+        pruner = PatientPruner(wrapped_pruner=MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2), patience=3)
         # list of training data files
         filenames = bwe.get_list_data_files()
         # randomly choose one file
@@ -204,42 +253,7 @@ def main() -> None:
         except KeyboardInterrupt:
             pass
 
-        print("Number of finished trials: ", len(study.trials))
-        completed_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
-        print("Number of pruned trials: ", len(study.trials)-len(completed_trials))
-
-        best_trial = study.best_trial
-        print("  value:", best_trial.value)
-
-        print("  Params: ")
-        for key, value in best_trial.params.items():
-            print("    {}: {}".format(key, value))
-
-        print("  User attrs:")
-        for key, value in best_trial.user_attrs.items():
-            print("    {}: {}".format(key, value))
-
-
-        num_completed = len(completed_trials)
-        num_pruned = len(study.trials) - len(completed_trials)
-        ts_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
-        best_trial.params['completed'] = num_completed
-        best_trial.params['pruned'] = num_pruned
-        best_trial.params['timestamp'] = ts_str
-
-        best_trial.user_attrs['completed'] = num_completed
-        best_trial.user_attrs['pruned'] = num_pruned
-        best_trial.user_attrs['timestamp'] = ts_str
-
-        params_filename = f"./trials/{params['algorithm_name']}_params.json"
-        attrs_filename = f"./trials/{params['algorithm_name']}_attrs.json"
-        with open(params_filename, "a") as outfile:
-            outfile.write('\n')
-            json.dump(best_trial.params, outfile)
-        with open(attrs_filename, "a") as outfile:
-            outfile.write('\n')
-            json.dump(best_trial.user_attrs, outfile)
+        save_best_trail(study, params['algorithm_name'])
 
     else:
         bwe.create_model(params)

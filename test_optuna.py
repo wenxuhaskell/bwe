@@ -4,6 +4,8 @@ import optuna
 from optuna.pruners import MedianPruner, PatientPruner
 from sklearn.preprocessing import MinMaxScaler
 import time
+from datetime import datetime
+import json
 
 from BweReward import RewardFunction
 from BweUtils import get_device, load_multiple_files, load_train_data_from_file
@@ -12,7 +14,7 @@ from hparam import BweHyperParamSampler, BweTuner
 
 def objective(trial: optuna.Trial) -> float:
     # 1 np = 100 json files = 100 episodes
-    datafiles = load_multiple_files("/home/code/bandwidth_challenge/data/testbed_np_comp100_clean", 1)
+    datafiles = load_multiple_files("/home/code/bandwidth_challenge/data/testbed_dataset", 1)
     file = datafiles[0]
     log_dir = "./logs/test_optuna_log"
 
@@ -52,14 +54,17 @@ def objective(trial: optuna.Trial) -> float:
     t2 = time.process_time()
     print(f"Worker {rank} finishes with creating MDP dataset - {t2-t1} s.")
 
-    n_steps = dataset.transition_count
-    n_steps_per_epoch = min(n_steps, 10000)  # ~ 36 big epochs, evaluate after each epoch
-    n_epochs = n_steps // n_steps_per_epoch
-    print(f"Worker {rank} train {n_steps} steps, {n_steps_per_epoch} steps per epoch for {n_epochs} epochs")
 
     # model parameters
     hparams = BweHyperParamSampler.create_sampler("CQL").sample_hyperparams(trial)
     cql = d3rlpy.algos.CQLConfig(**hparams).create(device=device)
+
+    n_steps = dataset.transition_count // hparams['batch_size']
+    n_steps_per_epoch = min(n_steps, 10000)  # ~ 36 big epochs, evaluate after each epoch
+    print(n_steps)
+    print(n_steps_per_epoch)
+    n_epochs = n_steps // n_steps_per_epoch
+    print(f"Worker {rank} train {n_steps} steps, {n_steps_per_epoch} steps per epoch for {n_epochs} epochs")
 
     try:
         for epoch, metrics in cql.fitter(
@@ -98,4 +103,42 @@ if __name__ == "__main__":
         save_path="./logs/test_optuna_log",
     )
 
-    tuner.tune(objective, n_jobs=1)  # later switch to n_jobs=-1 to use all cores
+    study = tuner.tune(objective, n_jobs=1, n_trials=10)  # later switch to n_jobs=-1 to use all cores
+    
+    print("Number of finished trials: ", len(study.trials))
+    completed_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
+    print("Number of pruned trials: ", len(study.trials)-len(completed_trials))
+
+    best_trial = study.best_trial
+    print("  value:", best_trial.value)
+
+    print("  Params: ")
+    for key, value in best_trial.params.items():
+        print("    {}: {}".format(key, value))
+
+    print("  User attrs:")
+    for key, value in best_trial.user_attrs.items():
+        print("    {}: {}".format(key, value))
+
+
+    num_completed = len(completed_trials)
+    num_pruned = len(study.trials) - len(completed_trials)
+    ts_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+    best_trial.params['completed'] = num_completed
+    best_trial.params['pruned'] = num_pruned
+    best_trial.params['timestamp'] = ts_str
+
+    best_trial.user_attrs['completed'] = num_completed
+    best_trial.user_attrs['pruned'] = num_pruned
+    best_trial.user_attrs['timestamp'] = ts_str
+
+
+    params_filename = f"./trials/to_CQL_params.json"
+    attrs_filename = f"./trials/to_CQL_attrs.json"
+    with open(params_filename, "a") as outfile:
+        outfile.write('\n')
+        json.dump(best_trial.params, outfile)
+    with open(attrs_filename, "a") as outfile:
+        outfile.write('\n')
+        json.dump(best_trial.user_attrs, outfile)
