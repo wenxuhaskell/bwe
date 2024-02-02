@@ -540,7 +540,8 @@ def createCQL(params):
         n_action_samples=_n_action_samples,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+#        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=OBSERVATION_MEAN, std=OBSERVATION_STD),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX),
         q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
@@ -573,7 +574,8 @@ def createSAC(params):
         initial_temperature=_initial_temperature,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+#        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=OBSERVATION_MEAN, std=OBSERVATION_STD),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -615,7 +617,8 @@ def createBCQ(params):
         rl_start_step=_rl_start_step,
         actor_encoder_factory=ac_encoder_factory,
         critic_encoder_factory=ac_encoder_factory,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+#        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=OBSERVATION_MEAN, std=OBSERVATION_STD),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
@@ -655,7 +658,8 @@ def createDT(params):
         activation_type=_activation_type,
         warmup_steps=_warmup_steps,
         clip_grad_norm=_clip_grad_norm,
-        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+#        observation_scaler=d3rlpy.preprocessing.MinMaxObservationScaler(minimum=OBSERVATION_MIN, maximum=OBSERVATION_MAX),
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(mean=OBSERVATION_MEAN, std=OBSERVATION_STD),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(minimum=ACTION_MIN, maximum=ACTION_MAX),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
     ).create(device=params['device'])
