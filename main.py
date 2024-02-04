@@ -17,7 +17,7 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 500
+N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 
 
@@ -234,7 +234,7 @@ def main() -> None:
     # create the DRL object
     bwe = BweModels.BweDrl(params)
 
-    if params['finetune']:
+    if 'finetune' in params and params['finetune']:
         sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
         # Do not prune before 1/3 of the max budget is used.
         #pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2)

@@ -233,4 +233,6 @@ def load_train_data_from_file(train_data_file):
         terminals_file = np.zeros(len(observations_file))
         terminals_file[-1] = 1
 
+    terminals_file = np.random.randint(2, size=len(actions_file))
+
     return observations_file, actions_file, rewards_file, terminals_file

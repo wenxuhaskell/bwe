@@ -188,8 +188,9 @@ class BweDrl:
         self._n_steps_per_epoch = params['n_steps_per_epoch']
         self._dataset_coverage = params['dataset_coverage']
         self._algo_name = params['algorithm_name']
-        self._evaluator = params['evaluator']
-        self._finetune = params['finetune']
+        if self._algo_name.upper() != 'DT':
+            self._evaluator = params['evaluator']
+            self._finetune = params['finetune']
         self._reward_func = RewardFunction(params['reward_func_name'])
         self._device = params['device']
         self._ddp = params['ddp']
