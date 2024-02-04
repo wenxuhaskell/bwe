@@ -271,6 +271,7 @@ class BweDrl:
         if self._rank == 0:
             # offline training for work of rank = 0, logging is enabled
             # offline training with evaluators
+            save_interval = min(n_steps // self._n_steps_per_epoch, 10)
             if self._evaluator:
                 self._algo.fit(
                     dataset,
@@ -280,7 +281,7 @@ class BweDrl:
                     logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
                                                     output_model_name=self._output_model_name),
                     evaluators=evaluators,
-                    save_interval=10,
+                    save_interval=save_interval,
                     enable_ddp=self._ddp,
                 )
             else:
@@ -292,7 +293,7 @@ class BweDrl:
                     with_timestamp=False,
                     logger_adapter=BweAdapterFactory(root_dir=self._log_dir,
                                                     output_model_name=self._output_model_name),
-                    save_interval=10,
+                    save_interval=save_interval,
                     enable_ddp=self._ddp,
                 )
         else:
@@ -561,8 +562,8 @@ def createSAC(params):
     _critic_learning_rate = params["critic_learning_rate"]
     _temp_learning_rate = params["temp_learning_rate"]
 
-#    ac_encoder_factory = LSTMEncoderFactory(1)
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    ac_encoder_factory = LSTMEncoderFactory(1)
+#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
     sac = d3rlpy.algos.SACConfig(
         batch_size=_batch_size,
         gamma=_gamma,
