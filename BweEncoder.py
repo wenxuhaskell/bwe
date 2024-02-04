@@ -9,22 +9,25 @@ class LSTMEncoder(nn.Module):
         self.feature_size = feature_size
 #        self.fc = nn.Linear(observation_shape[0], 128)
 #        self.lstm = nn.LSTM(input_size=15, hidden_size=feature_size, batch_first=True)
-        self.lstm_s = nn.LSTM(input_size=15, hidden_size=64, batch_first=True)
-        self.lstm_l = nn.LSTM(input_size=15, hidden_size=64, batch_first=True)
-        self.fc1 = nn.Linear(128, 128)
+        self.lstm_s = nn.LSTM(input_size=15, hidden_size=128, batch_first=True)
+        self.lstm_l = nn.LSTM(input_size=15, hidden_size=128, batch_first=True)
+        self.fc1 = nn.Linear(256, 128)
         self.fc2 = nn.Linear(128, feature_size)
 
     def forward(self, inp):
         # Initialize hidden state with zeros
         # sequence length, batch_size, input dimension
-        h0 = torch.zeros(1, inp.size(0), 64).requires_grad_()
-        c0 = torch.zeros(1, inp.size(0), 64).requires_grad_()
-        h1 = torch.zeros(1, inp.size(0), 64).requires_grad_()
-        c1 = torch.zeros(1, inp.size(0), 64).requires_grad_()
+        h0 = torch.zeros(1, inp.size(0), 128).requires_grad_()
+        c0 = torch.zeros(1, inp.size(0), 128).requires_grad_()
+        h1 = torch.zeros(1, inp.size(0), 128).requires_grad_()
+        c1 = torch.zeros(1, inp.size(0), 128).requires_grad_()
 
         inp = torch.reshape(inp, [len(inp), 15, 10])
+#        inp = inp[:,:,[9,8,7,6,5]]
         inp = torch.swapaxes(inp, 1, 2)
         inp_s, inp_l = torch.chunk(inp, 2, dim=1)
+        inp_s = torch.flip(inp_s, dims=(1,))
+        inp_l = torch.flip(inp_l, dims=(1,))
         hidden_output_s, _ = self.lstm_s(inp_s, (h0, c0))
         hidden_output_l, _ = self.lstm_l(inp_l, (h1, c1))
         inp = torch.cat((hidden_output_s[:,-1,:], hidden_output_l[:,-1,:]), dim=1)
