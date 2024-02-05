@@ -205,6 +205,9 @@ def reward_r3net(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> fl
     pkt_loss_rate = 0.6 * pkt_loss_rate_s + 0.4 * pkt_loss_rate_l
 
     final_rwd = 0.6 * np.log(4 * receive_rate + 1) - queuing_delay / 1000 - 10 * pkt_loss_rate
+    final_rwd = min(max(final_rwd, 0.0), 12.0)
+    final_rwd = final_rwd * 5 / 12
+
     return final_rwd
 
 
