@@ -1,0 +1,23 @@
+
+{
+  "algorithm_name":"DDPG",
+  "train_data_folder": "../data_np_comp10",
+  "test_data_folder": "testdata",
+  "train_on_max_files": 10,
+  "reward_func_name": "QOE_V1",
+  "output_model_name": "ddpgmodel",
+  "log_folder_name": "DDPG",
+  "update_actor_interval": 2,
+  "n_action_samples": 100,
+  "n_critics": 2,
+  "tau": 0.005,
+  "gamma": 0.99,
+  "batch_size": 128,
+  "dataset_coverage": 5,
+  "n_steps_per_epoch": 20,
+  "actor_learning_rate": 0.0001,
+  "critic_learning_rate": 0.0001,
+  "evaluator": true,
+  "finetune": false,
+  "device": "cpu:0"
+}
