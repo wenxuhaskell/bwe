@@ -214,6 +214,8 @@ class BweDrl:
             self._algo = createSAC(self._params)
         elif self._params['algorithm_name'] == "BCQ":
             self._algo = createBCQ(self._params)
+        elif self._params['algorithm_name'] == "DDPG":
+            self._algo = createDDPG(self._params)
         elif self._params['algorithm_name'] == "DT":
             self._algo = createDT(self._params)
             # Decision Transformer does not support evaluator
@@ -625,6 +627,34 @@ def createBCQ(params):
     ).create(device=params['device'])
 
     return bcq
+
+
+def createDDPG(params):
+    # parameters for algorithm
+    _batch_size = params['batch_size']
+    _gamma = params["gamma"]
+    _n_critics = params["n_critics"]
+    _tau = params["tau"]
+    _actor_learning_rate = params["actor_learning_rate"]
+    _critic_learning_rate = params["critic_learning_rate"]
+
+#    ac_encoder_factory = LSTMEncoderFactory(1)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    ddpg = d3rlpy.algos.DDPGConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
+    ).create(device=params['device'])
+
+    return ddpg
 
 
 def createDT(params):
