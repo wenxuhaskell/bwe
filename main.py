@@ -21,6 +21,30 @@ N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 
 
+def sample_ddpg_params(trial: optuna.Trial) -> Dict[str, Any]:
+    """Sampler for SAC hyperparameters."""
+    tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
+    gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
+    actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+
+    # Display true values.
+    trial.set_user_attr("tau_", tau)
+    trial.set_user_attr("gamma_", gamma)
+    trial.set_user_attr("actor_learning_rate_", actor_learning_rate)
+    trial.set_user_attr("critic_learning_rate_", critic_learning_rate)
+    trial.set_user_attr("batch_size_", batch_size)
+
+    return {
+        "tau": tau,
+        "gamma": gamma,
+        "actor_learning_rate": actor_learning_rate,
+        "critic_learning_rate": critic_learning_rate,
+        "batch_size": batch_size
+    }
+
+
 def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for SAC hyperparameters."""
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
@@ -132,6 +156,8 @@ def objective(drl: BweModels.BweDrl,
         params.update(sample_bcq_params(trial))
     elif algo_name == 'SAC':
         params.update(sample_sac_params(trial))
+    elif algo_name == 'DDPG':
+        params.update(sample_ddpg_params(trial))
     else:
         print("Algorithm is not supported")
         raise Exception()
