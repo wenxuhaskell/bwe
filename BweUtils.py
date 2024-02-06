@@ -203,7 +203,7 @@ def create_gym_dataset_from_file(train_data_file, rw_func):
 
     # prepare next_observations
     next_observations_file = np.copy(observations_file[1:])
-    next_observations_file = np.append(next_observations_file, next_observations_file[-1])
+    next_observations_file = np.append(next_observations_file, np.array(observations_file[-1]).reshape(1,-1), axis=0)
     dataset = {'observations': observations_file,
                'next_observations': next_observations_file,
                'actions': actions_file,
