@@ -9,8 +9,9 @@ class LSTMEncoder(nn.Module):
         self.feature_size = feature_size
 #        self.fc = nn.Linear(observation_shape[0], 128)
 #        self.lstm = nn.LSTM(input_size=15, hidden_size=feature_size, batch_first=True)
-        self.lstm_s = nn.LSTM(input_size=15, hidden_size=128, batch_first=True)
-        self.lstm_l = nn.LSTM(input_size=15, hidden_size=128, batch_first=True)
+        input_size = observation_shape[0]/10
+        self.lstm_s = nn.LSTM(input_size=input_size, hidden_size=128, batch_first=True)
+        self.lstm_l = nn.LSTM(input_size=input_size, hidden_size=128, batch_first=True)
         self.fc1 = nn.Linear(256, 128)
         self.fc2 = nn.Linear(128, feature_size)
 
@@ -22,7 +23,7 @@ class LSTMEncoder(nn.Module):
         h1 = torch.zeros(1, inp.size(0), 128).requires_grad_()
         c1 = torch.zeros(1, inp.size(0), 128).requires_grad_()
 
-        inp = torch.reshape(inp, [len(inp), 15, 10])
+        inp = torch.reshape(inp, [len(inp), inp.size(1)/10, 10])
 #        inp = inp[:,:,[9,8,7,6,5]]
         inp = torch.swapaxes(inp, 1, 2)
         inp_s, inp_l = torch.chunk(inp, 2, dim=1)

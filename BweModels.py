@@ -9,6 +9,8 @@ import math
 from tqdm import tqdm
 from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
+
+import BweEncoder
 from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi
 
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
@@ -240,7 +242,7 @@ class BweDrl:
     def load_MDP_dataset(self, filename) -> d3rlpy.dataset.MDPDataset:
         observations, actions, rewards, terminals = load_train_data_from_file(filename)
         # calculate rewards if needed
-        if not rewards:
+        if len(rewards) == 0 :
             rewards = np.array([self._reward_func(o) for o in observations])
             r_last = rewards[-1]
             rewards = np.append(rewards[1:], r_last)
@@ -530,6 +532,7 @@ def createCQL(params):
     _alpha_learning_rate = params["alpha_learning_rate"]
 
     ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+#    ac_encoder_factory = BweEncoder.LSTMEncoderFactory(32)
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -603,8 +606,8 @@ def createBCQ(params):
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
 
-    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
-    
+#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    ac_encoder_factory = BweEncoder.ACEncoderFactory(64)
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
         gamma=_gamma,

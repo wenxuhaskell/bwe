@@ -49,12 +49,12 @@ def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarr
     #    terminals_file = np.random.randint(2, size=len(observations_file))
     return observations_file, actions_file, terminals_file
 
-def process_feature_pca(feature: np.ndarray,
+def process_feature_pca(features: np.ndarray,
                         dim: int) -> np.ndarray:
     # scale the feature dataset
     scaling = StandardScaler()
-    scaling.fit(feature)
-    scaled_data = scaling.transform(feature)
+    scaling.fit(features)
+    scaled_data = scaling.transform(features)
     # dimensionality reduction using PCA
     principal = PCA(n_components=dim)
     principal.fit(scaled_data)
@@ -63,23 +63,39 @@ def process_feature_pca(feature: np.ndarray,
     return x
 
 
-def process_feature_average(feature: np.ndarray) -> np.ndarray:
+def process_feature_average(features: np.ndarray) -> np.ndarray:
     # average the features
-    new_feature = []
+    new_features = []
 
     for i in range(Feature.PROB_PKT_PROB):
-        ave_value_s = np.sum(feature[:, i * 10 + MI.SHORT_60 - 1 : i * 10 + MI.SHORT_300], axis=1)/5
-        ave_value_l = np.sum(feature[:, i * 10 + MI.LONG_600 - 1: i * 10 + MI.LONG_3000], axis=1)/5
-        new_feature.append(ave_value_s)
-        new_feature.append(ave_value_l)
+        ave_value_s = np.sum(features[:, i * 10 + MI.SHORT_60 - 1 : i * 10 + MI.SHORT_300], axis=1)/5
+        ave_value_l = np.sum(features[:, i * 10 + MI.LONG_600 - 1: i * 10 + MI.LONG_3000], axis=1)/5
+        new_features.append(ave_value_s)
+        new_features.append(ave_value_l)
 
-    new_feature = np.array(new_feature).transpose()
+    new_features = np.array(new_features).transpose()
     # scale the feature dataset
 #    scaling = StandardScaler()
 #    scaling.fit(new_feature)
 #    x = scaling.transform(new_feature)
 
-    return new_feature
+    return new_features
+
+
+def process_feature_reduction(features: np.ndarray, indexes: [int]) -> np.ndarray:
+    # average the features
+    new_features = []
+    size = len(features)
+    features = np.reshape(features, [size, 15, 10])
+    features = features[:, indexes,:]
+    features = np.reshape(features, [size,len(indexes)*10])
+    #new_feature = np.array(new_feature).transpose()
+    # scale the feature dataset
+#    scaling = StandardScaler()
+#    scaling.fit(new_feature)
+#    x = scaling.transform(new_feature)
+
+    return features
 
 
 def main() -> None:
@@ -157,6 +173,11 @@ def main() -> None:
                     observations_file = process_feature_pca(observations_file, args.dim)
                 elif args.algo.upper() == 'AVE':
                     observations_file = process_feature_average(observations_file)
+                elif args.algo.upper() == 'RUC':
+                    # reduced set of features
+                    indexes = [0,3,4,5,7,8,9,10,13,14]
+                    observations_file = process_feature_reduction(observations_file, indexes)
+
                 # save all data from the single data log file
                 observations.append(observations_file)
                 actions.append(actions_file)
