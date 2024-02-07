@@ -64,16 +64,16 @@ class ACEncoder(nn.Module):
     def __init__(self, observation_shape, feature_size):
         super().__init__()
         self.feature_size = feature_size
-        self.fc1 = nn.Linear(observation_shape[0], 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, feature_size)
+        self.fc1 = nn.Linear(observation_shape[0], 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, feature_size)
 
     def forward(self, inp):
         inp = torch.relu(self.fc1(inp))
         inp = torch.relu(self.fc2(inp))
         inp = torch.relu(self.fc3(inp))
-        outp = torch.tanh(self.fc4(inp))
+        outp = torch.relu(self.fc4(inp))
 
         return outp
 
@@ -82,17 +82,17 @@ class ACEncoderWithAction(nn.Module):
     def __init__(self, observation_shape, action_size, feature_size):
         super().__init__()
         self.feature_size = feature_size
-        self.fc1 = nn.Linear(observation_shape[0] + action_size, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, feature_size)
+        self.fc1 = nn.Linear(observation_shape[0] + action_size, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, feature_size)
 
     def forward(self, inp, action):
         inp = torch.cat([inp, action], dim=1)
         inp = torch.relu(self.fc1(inp))
         inp = torch.relu(self.fc2(inp))
         inp = torch.relu(self.fc3(inp))
-        outp = self.fc4(inp)
+        outp = torch.relu(self.fc4(inp))
 
         return outp
 
