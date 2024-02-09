@@ -110,7 +110,7 @@ class LSTMEncoderFactory(d3rlpy.models.EncoderFactory):
 
     @staticmethod
     def get_type() -> str:
-        return "ltsm"
+        return "lstm"
 
 
 @dataclasses.dataclass()

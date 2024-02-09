@@ -1,0 +1,24 @@
+
+{
+  "algorithm_name":"CRR",
+  "train_data_folder": "data",
+  "test_data_folder": "testdata",
+  "train_on_max_files": 2,
+  "reward_func_name": "QOE_V1",
+  "output_model_name": "crrmodel",
+  "log_folder_name": "CRR",
+  "update_actor_interval": 2,
+  "n_action_samples": 100,
+  "n_critics": 2,
+  "tau": 0.005,
+  "gamma": 0.99,
+  "beta": 1.0,
+  "batch_size": 128,
+  "dataset_coverage": 5,
+  "n_steps_per_epoch": 20,
+  "actor_learning_rate": 0.0001,
+  "critic_learning_rate": 0.0001,
+  "evaluator": true,
+  "finetune": true,
+  "device": "cpu:0"
+}

@@ -1,0 +1,26 @@
+
+{
+  "algorithm_name":"TD3PLUSBC",
+  "train_data_folder": "data",
+  "test_data_folder": "testdata",
+  "train_on_max_files": 2,
+  "reward_func_name": "QOE_V1",
+  "output_model_name": "td3plusbcmodel",
+  "log_folder_name": "TD3PLUSBC",
+  "update_actor_interval": 2,
+  "n_action_samples": 100,
+  "n_critics": 2,
+  "tau": 0.005,
+  "gamma": 0.99,
+  "alpha": 2.5,
+  "target_smoothing_sigma": 0.2,
+  "target_smoothing_clip": 0.5,
+  "batch_size": 128,
+  "dataset_coverage": 5,
+  "n_steps_per_epoch": 20,
+  "actor_learning_rate": 0.0001,
+  "critic_learning_rate": 0.0001,
+  "evaluator": true,
+  "finetune": true,
+  "device": "cpu:0"
+}

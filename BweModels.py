@@ -218,6 +218,10 @@ class BweDrl:
             self._algo = createBCQ(self._params)
         elif self._params['algorithm_name'] == "DDPG":
             self._algo = createDDPG(self._params)
+        elif self._params['algorithm_name'] == "CRR":
+            self._algo = createCRR(self._params)
+        elif self._params['algorithm_name'] == "TD3PLUSBC":
+            self._algo = createTD3PlusBC(self._params)
         elif self._params['algorithm_name'] == "DT":
             self._algo = createDT(self._params)
             # Decision Transformer does not support evaluator
@@ -658,6 +662,70 @@ def createDDPG(params):
     ).create(device=params['device'])
 
     return ddpg
+
+
+def createCRR(params):
+    # parameters for algorithm
+    _batch_size = params['batch_size']
+    _gamma = params["gamma"]
+    _beta = params["beta"]
+    _n_critics = params["n_critics"]
+    _tau = params["tau"]
+    _actor_learning_rate = params["actor_learning_rate"]
+    _critic_learning_rate = params["critic_learning_rate"]
+
+#    ac_encoder_factory = LSTMEncoderFactory(1)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    crr = d3rlpy.algos.CRRConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        beta=_beta,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
+    ).create(device=params['device'])
+
+    return crr
+
+
+def createTD3PlusBC(params):
+    # parameters for algorithm
+    _batch_size = params['batch_size']
+    _gamma = params["gamma"]
+    _alpha = params["alpha"]
+    _n_critics = params["n_critics"]
+    _tau = params["tau"]
+    _target_smoothing_sigma = params['target_smoothing_sigma']
+    _target_smoothing_clip = params['target_smoothing_clip']
+    _actor_learning_rate = params["actor_learning_rate"]
+    _critic_learning_rate = params["critic_learning_rate"]
+
+#    ac_encoder_factory = LSTMEncoderFactory(32)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+    td3plusbc = d3rlpy.algos.TD3PlusBCConfig(
+        batch_size=_batch_size,
+        gamma=_gamma,
+        alpha=_alpha,
+        target_smoothing_sigma=_target_smoothing_sigma,
+        target_smoothing_clip=_target_smoothing_clip,
+        actor_learning_rate=_actor_learning_rate,
+        critic_learning_rate=_critic_learning_rate,
+        tau=_tau,
+        n_critics=_n_critics,
+        actor_encoder_factory=ac_encoder_factory,
+        critic_encoder_factory=ac_encoder_factory,
+        observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
+        action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
+        reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX)
+    ).create(device=params['device'])
+
+    return td3plusbc
 
 
 def createDT(params):
