@@ -1,12 +1,12 @@
 
 {
-  "algorithm_name":"DDPG",
+  "algorithm_name":"TD3PLUSBC",
   "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
   "train_on_max_files": 100,
   "reward_func_name": "QOE_V1",
-  "output_model_name": "ddpgmodel",
-  "log_folder_name": "DDPG",
+  "output_model_name": "td3plusbcmodel",
+  "log_folder_name": "TD3PLUSBC",
   "update_actor_interval": 2,
   "n_action_samples": 100,
   "n_critics": 2,
