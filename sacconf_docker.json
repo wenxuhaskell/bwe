@@ -18,6 +18,5 @@
   "critic_learning_rate": 0.0049,
   "temp_learning_rate": 0.0087,
   "evaluator": true,
-  "finetune": false,
-  "device": "cpu"
+  "finetune": false
 }
