@@ -13,7 +13,7 @@
   "tau": 0.005,
   "gamma": 0.99,
   "batch_size": 128,
-  "dataset_coverage": 5,
+  "dataset_coverage": 1,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0001,
   "critic_learning_rate": 0.0001,
