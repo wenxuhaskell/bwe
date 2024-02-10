@@ -10,15 +10,14 @@
   "update_actor_interval": 2,
   "n_action_samples": 100,
   "n_critics": 2,
-  "tau": 0.005,
+  "tau": 0.05,
   "gamma": 0.99,
   "beta": 1.0,
-  "batch_size": 128,
+  "batch_size": 32,
   "dataset_coverage": 1,
   "n_steps_per_epoch": 20,
-  "actor_learning_rate": 0.0001,
-  "critic_learning_rate": 0.0001,
+  "actor_learning_rate": 0.0029,
+  "critic_learning_rate": 0.0066,
   "evaluator": true,
-  "finetune": true,
-  "device": "cpu:0"
+  "finetune": false
 }
