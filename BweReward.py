@@ -340,6 +340,6 @@ def reward_qoe_v2(observation: List[float],
         pass
     # sum up those two
     if quality_qoe > 0:
-        final_qoe = 0.95 * final_qoe + 0.05 * quality_qoe
+        final_qoe = 0.9 * final_qoe + 0.1 * quality_qoe
 
     return final_qoe
