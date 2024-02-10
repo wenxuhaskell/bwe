@@ -225,14 +225,16 @@ def load_train_data_from_file(train_data_file):
         loaded = np.load(train_data_file, 'rb')
         observations_file = np.array(loaded['obs'])
         actions_file = np.array(loaded['acts'])
+        video_file = np.array(loaded['vds'])
+        audio_file = np.array(loaded['ads'])
         terminals_file = np.array(loaded['terms'])
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
     elif ext.upper() == '.JSON':
-        observations_file, actions_file, _, _ = load_train_data(train_data_file)
+        observations_file, actions_file, video_file, audio_file = load_train_data(train_data_file)
         terminals_file = np.zeros(len(observations_file))
         terminals_file[-1] = 1
 
     terminals_file = np.random.randint(2, size=len(actions_file))
 
-    return observations_file, actions_file, rewards_file, terminals_file
+    return observations_file, actions_file, rewards_file, terminals_file, video_file, audio_file

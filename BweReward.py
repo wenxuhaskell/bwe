@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 from typing import Any, Dict, List
 
@@ -165,6 +166,7 @@ def get_feature_for_mi(
 #######################################################################################################################
 class RewardFunction:
     def __init__(self, reward_func_name: str = "QOE_V1"):
+        self.func_name = reward_func_name.upper()
         self.inner_params = {}
         match (reward_func_name.upper()):
             case "R3NET":
@@ -177,11 +179,22 @@ class RewardFunction:
                     "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
                     "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
                 }
+            case "QOE_V2":
+                self.reward_func = reward_qoe_v2
+                self.inner_params = {
+                    "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+                    "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+                }
             case _:
                 raise ValueError(f"Unknown reward function name: {reward_func_name}")
 
-    def __call__(self, observation: List[float]) -> float:
-        return self.reward_func(observation, self.inner_params)
+    def __call__(self, observation: List[float], video: float=None, audio: float=None) -> float:
+        if self.func_name == "R3NET":
+            return self.reward_func(observation)
+        elif self.func_name == "QOE_V1":
+            return self.reward_func(observation, self.inner_params)
+        elif self.func_name == "QOE_V2":
+            return self.reward_func(observation, self.inner_params, video, audio)
 
 
 # reward function {0.6 * ln(4R + 1) -D - 10L} (inspired from R3Net)
@@ -305,4 +318,28 @@ def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any]) -> float:
     final_qoe = 0.0
     final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
     final_qoe *= 5
+    return final_qoe
+
+
+def reward_qoe_v2(observation: List[float],
+                  rf_params: Dict[str, Any],
+                  video_quality: float,
+                  audio_quality: float) -> float:
+
+    # calculate qoe using observation
+    final_qoe = reward_qoe_v1(observation, rf_params)
+    # calculate qoe using video and audio quality indicators.
+    quality_qoe = 0.0
+    if not np.isnan(video_quality) and not np.isnan(audio_quality):
+        quality_qoe = (video_quality + audio_quality) * 0.5
+    elif not np.isnan(audio_quality):
+        quality_qoe = audio_quality
+    elif not np.isnan(video_quality):
+        quality_qoe = video_quality
+    else:
+        pass
+    # sum up those two
+    if quality_qoe > 0:
+        final_qoe = 0.95 * final_qoe + 0.05 * quality_qoe
+
     return final_qoe

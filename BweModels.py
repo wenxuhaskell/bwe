@@ -1,6 +1,7 @@
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from functools import partial
 import d3rlpy
 import numpy as np
 import onnxruntime as ort
@@ -244,10 +245,13 @@ class BweDrl:
 
     # create MDP dataset for current worker
     def load_MDP_dataset(self, filename) -> d3rlpy.dataset.MDPDataset:
-        observations, actions, rewards, terminals = load_train_data_from_file(filename)
+        observations, actions, rewards, terminals, videos, audios = load_train_data_from_file(filename)
         # calculate rewards if needed
         if len(rewards) == 0 :
-            rewards = np.array([self._reward_func(o) for o in observations])
+            if self._params['reward_func_name'].upper() == 'QOE_V1':
+                rewards = np.array([self._reward_func(o) for o in observations])
+            elif self._params['reward_func_name'].upper() == 'QOE_V2':
+                rewards = np.array([self._reward_func(o, v, a) for (o, v, a) in zip(observations, videos, audios)])
             r_last = rewards[-1]
             rewards = np.append(rewards[1:], r_last)
 
