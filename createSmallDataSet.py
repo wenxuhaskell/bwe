@@ -11,6 +11,7 @@ from BweReward import RewardFunction, Feature, MI
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
+indexes = [0, 3, 4, 5, 7, 8, 9, 10, 13, 14]
 
 def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
     try:
@@ -175,7 +176,6 @@ def main() -> None:
                     observations_file = process_feature_average(observations_file)
                 elif args.algo.upper() == 'RUC':
                     # reduced set of features
-                    indexes = [0,3,4,5,7,8,9,10,13,14]
                     observations_file = process_feature_reduction(observations_file, indexes)
 
                 # save all data from the single data log file

@@ -12,6 +12,8 @@ from d3rlpy.models.encoders import register_encoder_factory
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
 from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net
+from createSmallDataSet import process_feature_reduction
+from createSmallDataSet import indexes
 
 model_filename = ''
 data_filenames =[]
@@ -125,9 +127,14 @@ class eval_model:
             result = load_train_data_from_file(filename)
             observations, bw_preds, _, _ = result
             bw_predictions.append(bw_preds)
+            # extract rewards
+            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
+            #                f_reward = reward_r3net(observation)
+            if len(observations[0]) != algo.observation_shape[0]:
+                observations = process_feature_reduction(observations, indexes)
 
             # returns greedy action
-            for observation in observations:
+            for observation, f_reward in zip(observations, f_rwds):
                 if self.__plot_log:
                     # extract features for MI.SHORT_300
                     m_interval = MI.SHORT_300
@@ -146,11 +153,6 @@ class eval_model:
                     smi_f13.append(get_feature_by_index(observation, Feature.VIDEO_PKT_PROB, m_interval))
                     smi_f14.append(get_feature_by_index(observation, Feature.AUDIO_PKT_PROB, m_interval))
                     smi_f15.append(get_feature_by_index(observation, Feature.PROB_PKT_PROB, m_interval))
-
-                # extract rewards
-                f_reward = reward_qoe_v1(observation, inner_params)
-#                f_reward = reward_r3net(observation)
-                f_rwds.append(f_reward)
 
                 # add batch dimension for prediction
                 #observation = observation.reshape((1, len(observation))).astype(np.float32)
