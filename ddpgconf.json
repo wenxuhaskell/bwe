@@ -1,7 +1,7 @@
 
 {
   "algorithm_name":"DDPG",
-  "train_data_folder": "../data_np_comp10",
+  "train_data_folder": "data",
   "test_data_folder": "testdata",
   "train_on_max_files": 10,
   "reward_func_name": "QOE_V1",

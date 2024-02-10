@@ -1,7 +1,7 @@
 
 {
   "algorithm_name":"BCQ",
-  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_clean",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev1",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
   "train_on_max_files": 100,
   "reward_func_name": "QOE_V1",
