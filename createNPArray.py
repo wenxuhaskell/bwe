@@ -35,13 +35,13 @@ def load_train_data(
 
 def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     # load the log file and prepare the dataset
-    observations_file, actions_file, _, _ = load_train_data(filename)
+    observations_file, actions_file, video_quality, audio_quality = load_train_data(filename)
     assert len(observations_file) > 0, f"File {filename} is empty"
     # terminals are not used so they should be non 1.0
     terminals_file = np.zeros(len(observations_file))
     terminals_file[-1] = 1
 #    terminals_file = np.random.randint(2, size=len(observations_file))
-    return observations_file, actions_file, terminals_file
+    return observations_file, actions_file, terminals_file, video_quality, audio_quality
 
 
 
@@ -89,13 +89,15 @@ def main() -> None:
         t_start = time.process_time()
         observations = []
         actions = []
+        videos = []
+        audios = []
         terminals = []
         # load data log and save it into .npz file
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(process_file, filename) for filename in train_data_files]
             for future in tqdm(as_completed(futures), desc=f'Batch {counter+1} - Loading MDP', unit="file"):
                 result = future.result()
-                observations_file, actions_file, terminals_file = result
+                observations_file, actions_file, terminals_file, video_file, audio_file = result
                 # filter out bandwidth = 20000.0
                 c = 0
                 for a in actions_file:
@@ -106,18 +108,24 @@ def main() -> None:
                 observations_file = observations_file[c:]
                 actions_file = actions_file[c:]
                 terminals_file = terminals_file[c:]
+                video_file = video_file[c:]
+                audio_file = audio_file[c:]
 
                 observations.append(observations_file)
                 actions.append(actions_file)
                 terminals.append(terminals_file)
+                videos.append(video_file)
+                audios.append(audio_file)
 
         observations = np.concatenate(observations)
         actions = np.concatenate(actions)
         terminals = np.concatenate(terminals)
+        videos = np.concatenate(videos)
+        audios = np.concatenate(audios)
 
         # create the file
         f_o = open(f_path, 'wb')
-        np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals)
+        np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals, vds=videos, ads=audios)
         f_o.close()
         # increase the counter
         counter = counter + 1

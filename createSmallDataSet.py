@@ -42,13 +42,13 @@ def load_train_data(
 
 def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     # load the log file and prepare the dataset
-    observations_file, actions_file, _, _ = load_train_data(filename)
+    observations_file, actions_file, video_quality, audio_quality = load_train_data(filename)
     assert len(observations_file) > 0, f"File {filename} is empty"
     # terminals are not used so they should be non 1.0
     terminals_file = np.zeros(len(observations_file))
     terminals_file[-1] = 1
     #    terminals_file = np.random.randint(2, size=len(observations_file))
-    return observations_file, actions_file, terminals_file
+    return observations_file, actions_file, terminals_file, video_quality, audio_quality
 
 def process_feature_pca(features: np.ndarray,
                         dim: int) -> np.ndarray:
@@ -148,6 +148,8 @@ def main() -> None:
         t_start = time.process_time()
         observations = []
         actions = []
+        videos = []
+        audios = []
         terminals = []
         rewards = []
         # load data log and save it into .npz file
@@ -155,7 +157,7 @@ def main() -> None:
             futures = [executor.submit(process_file, filename) for filename in train_data_files]
             for future in tqdm(as_completed(futures), desc=f'Batch {counter + 1} - Loading MDP', unit="file"):
                 result = future.result()
-                observations_file, actions_file, terminals_file = result
+                observations_file, actions_file, terminals_file, video_file, audio_file = result
                 c = 0
                 for a in actions_file:
                     if a==20000.0:
@@ -166,8 +168,14 @@ def main() -> None:
                 observations_file = observations_file[c:]
                 actions_file = actions_file[c:]
                 terminals_file = terminals_file[c:]
+                video_file = video_file[c:]
+                audio_file = audio_file[c:]
                 # calculate rewards
-                rewards_file = [reward_func(o) for o in observations_file]
+                rewards_file = []
+                if args.rewardfunc == 'QOE_V2':
+                    rewards_file = [reward_func(o, v, a) for (o, v, a) in zip(observations_file, video_file, audio_file)]
+                else:
+                    rewards_file = [reward_func(o) for o in observations_file]
                 rewards_file = np.append(rewards_file[1:], 0)
                 # PCA dimensionality reduction of the feature
                 if args.algo.upper() == 'PCA':
@@ -181,17 +189,21 @@ def main() -> None:
                 # save all data from the single data log file
                 observations.append(observations_file)
                 actions.append(actions_file)
+                videos.append(video_file)
+                audios.append(audio_file)
                 terminals.append(terminals_file)
                 rewards.append(rewards_file)
 
         observations = np.concatenate(observations)
         actions = np.concatenate(actions)
+        videos = np.concatenate(videos)
+        audios = np.concatenate(audios)
         terminals = np.concatenate(terminals)
         rewards = np.concatenate(rewards)
 
         # create the file
         f_o = open(f_path, 'wb')
-        np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals, rws=rewards)
+        np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals, rws=rewards, vds=videos, ads=audios)
         f_o.close()
         # increase the counter
         counter = counter + 1
