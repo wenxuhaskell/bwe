@@ -217,17 +217,27 @@ def create_gym_dataset_from_file(train_data_file, rw_func):
 def load_train_data_from_file(train_data_file):
     observations_file = []
     actions_file = []
+    video_file = []
+    audio_file = []
     rewards_file = []
     terminals_file = []
     print(f"Load file {train_data_file}...")
     ext = pathlib.Path(train_data_file).suffix
     if ext.upper() == '.NPZ':
         loaded = np.load(train_data_file, 'rb')
+        
         observations_file = np.array(loaded['obs'])
+        
         actions_file = np.array(loaded['acts'])
-        video_file = np.array(loaded['vds'])
-        audio_file = np.array(loaded['ads'])
+        
+        if 'vds' in loaded:
+            video_file = np.array(loaded['vds'])
+        
+        if 'ads' in loaded:
+            audio_file = np.array(loaded['ads'])
+        
         terminals_file = np.array(loaded['terms'])
+        
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
     elif ext.upper() == '.JSON':

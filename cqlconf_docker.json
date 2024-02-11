@@ -14,7 +14,7 @@
   "n_critics": 2,
   "initial_temperature": 1.0,
   "tau": 0.001,
-  "batch_size": 64,
+  "batch_size": 256,
   "dataset_coverage": 1,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0081,

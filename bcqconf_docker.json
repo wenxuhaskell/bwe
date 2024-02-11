@@ -1,10 +1,10 @@
 
 {
   "algorithm_name":"BCQ",
-  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev1",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev2",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
   "train_on_max_files": 100,
-  "reward_func_name": "QOE_V1",
+  "reward_func_name": "QOE_V2",
   "output_model_name": "bcqmodel",
   "log_folder_name": "BCQ",
   "update_actor_interval": 2,
