@@ -71,6 +71,7 @@ class eval_model:
         self.__data_filenames = []
         self.__model_filename = ''
         self.__plot_log = False
+        self.__plot_reward = False
 
     def run(self):
         window = Tk()
@@ -92,7 +93,9 @@ class eval_model:
         data_file_names = ''.join([o + '\n' for o in self.__data_filenames])
         label_data = Label(text=data_file_names)
 
-        self.ask_plot_log()
+        self.ask_plot_reward()
+
+#        self.ask_plot_log()
 
         self.eval_model()
 
@@ -112,6 +115,10 @@ class eval_model:
 
     def ask_plot_log(self):
         self.__plot_log = messagebox.askyesno("Plot features?")
+
+    def ask_plot_reward(self):
+        self.__plot_reward = messagebox.askyesno("Plot rewards?")
+
 
     def eval_model(self):
         if self.__model_filename == '':
@@ -165,8 +172,8 @@ class eval_model:
             observations, bw_preds, r, t, videos, audios = result
             bw_predictions.append(bw_preds)
             # extract rewards
-#            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
-            f_rwds = [reward_qoe_v2(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
+#            f_rwds = [reward_qoe_v2(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
             #                f_reward = reward_r3net(observation)
             if len(observations[0]) != algo.observation_shape[0]:
                 observations = process_feature_reduction(observations, indexes)
@@ -227,24 +234,32 @@ class eval_model:
 
 
         if not self.__plot_log:
-            plt.subplot(2, 1, 1)
-            plt.plot(x, predictions_scaled, label="estimate")
-            plt.plot(x, bw_predictions_scaled, label="baseline")
-            plt.legend()
-            plt.ylabel("Bandwidth")
-            plt.xlabel("Step")
-            plt.title('Estimate divided by 10e6')
 
-            plt.subplot(2, 1, 2)
-            plt.plot(x, f_rwds, label="reward")
-            plt.legend()
-            plt.ylabel('Reward')
-            algo_name = self.__model_filename.split('/')[-1]
-            log_file_name = filename.split('/')[-1]
-            plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
+            if not self.__plot_reward:
+                plt.plot(x, predictions_scaled, label="estimate")
+                plt.plot(x, bw_predictions_scaled, label="baseline")
+                plt.legend()
+                plt.ylabel("Bandwidth")
+                plt.xlabel("Step")
+                plt.title('Estimate divided by 10e6')
+                plt.show()
+            else:
+                plt.subplot(2, 1, 1)
+                plt.plot(x, predictions_scaled, label="estimate")
+                plt.plot(x, bw_predictions_scaled, label="baseline")
+                plt.legend()
+                plt.ylabel("Bandwidth")
+                plt.xlabel("Step")
+                plt.title('Estimate divided by 10e6')
 
-            plt.show()
-
+                plt.subplot(2, 1, 2)
+                plt.plot(x, f_rwds, label="reward")
+                plt.legend()
+                plt.ylabel('Reward')
+                algo_name = self.__model_filename.split('/')[-1]
+                log_file_name = filename.split('/')[-1]
+                plt.xlabel(f'Evaluate {algo_name} on {log_file_name}')
+                plt.show()
         else:
             plt.subplot(2, 4, 1)
             plt.plot(x, predictions_scaled, label="estimate")
