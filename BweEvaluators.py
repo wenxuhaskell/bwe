@@ -16,7 +16,7 @@ class BweTDErrorEvaluator(TDErrorEvaluator):
         self._epoch_idx = 0
         self._last_td_error = 0.0
 
-    def get_last_td_error(self) -> float:
+    def get_last_value(self) -> float:
         return self._last_td_error
 
     def __call__(
@@ -44,7 +44,7 @@ class BweContinuousActionDiffEvaluator(ContinuousActionDiffEvaluator):
         self._epoch_idx = 0
         self._last_ad_error = 0.0
 
-    def get_last_ad_error(self) -> float:
+    def get_last_value(self) -> float:
         return self._last_ad_error
 
     def __call__(
@@ -72,7 +72,7 @@ class BweAverageValueEstimationEvaluator(AverageValueEstimationEvaluator):
         self._epoch_idx = 0
         self._last_av_error = 0.0
 
-    def get_last_av_error(self) -> float:
+    def get_last_value(self) -> float:
         return self._last_av_error
 
     def __call__(

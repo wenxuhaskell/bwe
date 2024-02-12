@@ -14,10 +14,10 @@ import torch
 import torch.distributed as dist
 from functools import partial
 import BweModels
-from BweEvaluators import BweTDErrorEvaluator
+from BweEvaluators import BweTDErrorEvaluator, BweContinuousActionDiffEvaluator, BweAverageValueEstimationEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 500
+N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 
 def sample_td3plusbc_params(trial: optuna.Trial) -> Dict[str, Any]:
@@ -221,15 +221,19 @@ def objective(drl: BweModels.BweDrl,
 
     # create evaluators
     test_episodes = dataset.episodes[:1]
-    td_eva = BweTDErrorEvaluator(test_episodes, trial)
-    da_eva = d3rlpy.metrics.evaluators.DiscountedSumOfAdvantageEvaluator(test_episodes)
-    av_eva = d3rlpy.metrics.evaluators.AverageValueEstimationEvaluator(test_episodes)
-    ad_eva = d3rlpy.metrics.evaluators.ContinuousActionDiffEvaluator(test_episodes)
+    tune_eva = None
+    match(params['tune_evaluator'].upper()):
+        case "ACTION_DIFF":
+            tune_eva = BweContinuousActionDiffEvaluator(test_episodes, trial)
+        case "TD_ERROR":
+            tune_eva = BweTDErrorEvaluator(test_episodes, trial)
+#        case "AVE_VALUE_EST":
+#            tune_eva = BweAverageValueEstimationEvaluator(test_episodes, trial)
+        case _:
+            raise ValueError(f"Unsupported evaluator for finetuning - {params['tune_evaluator']}!")
+
     evaluators = {
-        'td_error': td_eva,
-        'discounted_advantage': da_eva,
-        'average_value': av_eva,
-        'action_diff': ad_eva
+        params['tune_evaluator']: tune_eva
     }
 
     nan_encountered = False
@@ -247,12 +251,12 @@ def objective(drl: BweModels.BweDrl,
     if nan_encountered:
         return float("nan")
 
-    value = td_eva.get_last_td_error()
+    value = tune_eva.get_last_value()
     # report the value (contained in evaluator) back to trail?
     return value
 
 
-def save_best_trail(study, algo_name):
+def save_best_trail(study, params):
     print("Number of finished trials: ", len(study.trials))
     completed_trials = study.get_trials(states=[optuna.trial.TrialState.COMPLETE])
     print("Number of pruned trials: ", len(study.trials)-len(completed_trials))
@@ -276,13 +280,14 @@ def save_best_trail(study, algo_name):
     best_trial.params['completed'] = num_completed
     best_trial.params['pruned'] = num_pruned
     best_trial.params['timestamp'] = ts_str
+    best_trial.params['tune_evaluator'] = params['tune_evaluator']
 
     best_trial.user_attrs['completed'] = num_completed
     best_trial.user_attrs['pruned'] = num_pruned
     best_trial.user_attrs['timestamp'] = ts_str
 
-    params_filename = f"./trials/{algo_name}_params.json"
-    attrs_filename = f"./trials/{algo_name}_attrs.json"
+    params_filename = f"./trials/{params['algorithm_name']}_params.json"
+    attrs_filename = f"./trials/{params['algorithm_name']}_attrs.json"
     with open(params_filename, "a") as outfile:
         outfile.write('\n')
         json.dump(best_trial.params, outfile)
@@ -333,7 +338,7 @@ def main() -> None:
         except KeyboardInterrupt:
             pass
 
-        save_best_trail(study, params['algorithm_name'])
+        save_best_trail(study, params)
 
     else:
         bwe.create_model(params)
