@@ -22,5 +22,6 @@
   "temp_learning_rate": 0.03,
   "alpha_learning_rate": 0.074,
   "evaluator": true,
+  "tune_evaluator": "action_diff",
   "finetune": false
 }

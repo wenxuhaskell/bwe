@@ -1,10 +1,10 @@
 
 {
   "algorithm_name":"BCQ",
-  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev2",
+  "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev1",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
   "train_on_max_files": 100,
-  "reward_func_name": "QOE_V2",
+  "reward_func_name": "QOE_V1",
   "output_model_name": "bcqmodel",
   "log_folder_name": "BCQ",
   "update_actor_interval": 2,
@@ -14,7 +14,7 @@
   "beta":0.4,
   "gamma": 0.999,
   "lam":0.9,
-  "batch_size": 128,
+  "batch_size": 64,
   "dataset_coverage": 1,
   "n_steps_per_epoch": 20,
   "actor_learning_rate": 0.0069,
@@ -23,5 +23,6 @@
   "action_flexibility": 0.01,
   "rl_start_step": 0,
   "evaluator": true,
+  "tune_evaluator": "action_diff",
   "finetune": false
 }
