@@ -3,7 +3,7 @@
   "algorithm_name":"BCQ",
   "train_data_folder": "/home/code/bandwidth_challenge/data/testbed_np_comp100_ruc_qoev1",
   "test_data_folder": "/home/code/bandwidth_challenge/data/emulated_dataset",
-  "train_on_max_files": 100,
+  "train_on_max_files": 2,
   "reward_func_name": "QOE_V1",
   "output_model_name": "bcqmodel",
   "log_folder_name": "BCQ",
@@ -24,5 +24,6 @@
   "rl_start_step": 0,
   "evaluator": true,
   "tune_evaluator": "action_diff",
-  "finetune": false
+  "finetune": true,
+  "device": "cuda:0"
 }

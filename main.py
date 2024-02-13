@@ -21,13 +21,13 @@ N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 
 def sample_td3plusbc_params(trial: optuna.Trial) -> Dict[str, Any]:
-    """Sampler for SAC hyperparameters."""
+    """Sampler for TD3+BC hyperparameters."""
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
     gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     alpha = trial.suggest_float("alpha", low=2, high=3, step=0.1)
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -48,13 +48,13 @@ def sample_td3plusbc_params(trial: optuna.Trial) -> Dict[str, Any]:
 
 
 def sample_crr_params(trial: optuna.Trial) -> Dict[str, Any]:
-    """Sampler for SAC hyperparameters."""
+    """Sampler for CRR hyperparameters."""
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
     gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
 #    beta = trial.suggest_float("beta", low=0.7, high=1.0, step=0.1)
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -75,12 +75,12 @@ def sample_crr_params(trial: optuna.Trial) -> Dict[str, Any]:
 
 
 def sample_ddpg_params(trial: optuna.Trial) -> Dict[str, Any]:
-    """Sampler for SAC hyperparameters."""
+    """Sampler for DDPG hyperparameters."""
     tau = trial.suggest_categorical("tau", [0.001, 0.005, 0.01, 0.05, 0.1])
     gamma = trial.suggest_categorical("gamma", [0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
 
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -105,7 +105,7 @@ def sample_sac_params(trial: optuna.Trial) -> Dict[str, Any]:
     actor_learning_rate = 1.0 - trial.suggest_float("actor_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-4, high=1e-2, step=1e-4)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
     
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -134,7 +134,7 @@ def sample_cql_params(trial: optuna.Trial) -> Dict[str, Any]:
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     temp_learning_rate = 1.0 - trial.suggest_float("temp_learning_rate", low=1e-2, high=0.1, step=1e-2)
     alpha_learning_rate = trial.suggest_float("alpha_learning_rate", low=1e-4, high=0.1, step=1e-4)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
     
     # Display true values.
     trial.set_user_attr("tau_", tau)
@@ -168,7 +168,7 @@ def sample_bcq_params(trial: optuna.Trial) -> Dict[str, Any]:
     critic_learning_rate = 1.0 - trial.suggest_float("critic_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     imitator_learning_rate = 1.0 - trial.suggest_float("imitator_learning_rate", low=1e-4, high=1e-2, step=1e-4)
     action_flexibility = 1.0 - trial.suggest_float("action_flexibility", low=1e-2, high=0.1, step=1e-2)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512, 1024])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
     
     # Display true values.
     trial.set_user_attr("tau_", tau)

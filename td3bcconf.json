@@ -21,5 +21,6 @@
   "actor_learning_rate": 0.01,
   "critic_learning_rate": 0.0065,
   "evaluator": true,
+  "tune_evaluator": "action_diff",
   "finetune": false
 }
