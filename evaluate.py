@@ -82,8 +82,6 @@ class eval_model:
 
         window.config(background="grey")
 
-        label_model = Label(text="Model file: " + self.__model_filename)
-
         self.select_model_file()
 
         label_model = Label(text="Model file: " + self.__model_filename)
