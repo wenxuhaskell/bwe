@@ -159,9 +159,9 @@ class eval_model:
         log_file_name = filename.split('/')[-1]
 
         if not self.__plot_reward:
-            plt.plot(x, predictions1_scaled, label=algo_name1)
-            plt.plot(x, predictions2_scaled, label=algo_name2)
-            plt.plot(x, bw_predictions_scaled, label="baseline")
+            plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
+            plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
+            plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
             plt.legend()
             plt.ylabel("Bandwidth [mbps]")
             plt.xlabel("Step")
@@ -169,16 +169,16 @@ class eval_model:
             plt.show()
         else:
             plt.subplot(2, 1, 1)
-            plt.plot(x, predictions1_scaled, label=algo_name1)
-            plt.plot(x, predictions2_scaled, label=algo_name2)
-            plt.plot(x, bw_predictions_scaled, label="baseline")
+            plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
+            plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
+            plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
             plt.legend()
             plt.ylabel("Bandwidth [mbps]")
             plt.xlabel("Step")
             plt.title(f'{algo_name1} vs {algo_name2} \n {log_file_name}')
 
             plt.subplot(2, 1, 2)
-            plt.plot(x, f_rwds, label="reward")
+            plt.plot(x, f_rwds, linewidth=1, label="reward")
             plt.legend()
             plt.ylabel('Reward')
             plt.xlabel(f'Evaluate on {log_file_name}')
