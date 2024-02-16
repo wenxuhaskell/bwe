@@ -6,49 +6,25 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from BweReward import RewardFunction, Feature, MI
+from BweReward import RewardFunction, Feature, MI, remaining_features, process_feature_qoev3
+from BweUtils import load_train_data, load_data
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-indexes = [0, 3, 4, 5, 7, 8, 9, 10, 13, 14]
 
-def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
-    try:
-        with open(datafile, 'r') as file:
-            data = json.load(file)
-    except FileNotFoundError:
-        print(f"File not found: {datafile}")
-        return None
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON in file {datafile}: {e}")
-        return None
-    return data
-
-
-def load_train_data(
-        datafile: os.PathLike | str,
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-    data = load_data(datafile)
-    if data is None:
-        return None
-
-    bandwidth_predictions = np.array(data['bandwidth_predictions'])
-    observations = np.array(data['observations'])
-    video_quality = np.array(data['video_quality'])
-    audio_quality = np.array(data['audio_quality'])
-    return observations, bandwidth_predictions, video_quality, audio_quality
 
 
 def process_file(filename: str) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     # load the log file and prepare the dataset
-    observations_file, actions_file, video_quality, audio_quality = load_train_data(filename)
+    observations_file, actions_file, video_quality, audio_quality, capacity, lossrate = load_train_data(filename)
     assert len(observations_file) > 0, f"File {filename} is empty"
     # terminals are not used so they should be non 1.0
     terminals_file = np.zeros(len(observations_file))
     terminals_file[-1] = 1
     #    terminals_file = np.random.randint(2, size=len(observations_file))
-    return observations_file, actions_file, terminals_file, video_quality, audio_quality
+    return observations_file, actions_file, terminals_file, video_quality, audio_quality, capacity, lossrate
+
 
 def process_feature_pca(features: np.ndarray,
                         dim: int) -> np.ndarray:
@@ -84,17 +60,11 @@ def process_feature_average(features: np.ndarray) -> np.ndarray:
 
 
 def process_feature_reduction(features: np.ndarray, indexes: [int]) -> np.ndarray:
-    # average the features
-    new_features = []
+    # keep the features specified by indexes.
     size = len(features)
     features = np.reshape(features, [size, 15, 10])
     features = features[:, indexes,:]
     features = np.reshape(features, [size,len(indexes)*10])
-    #new_feature = np.array(new_feature).transpose()
-    # scale the feature dataset
-#    scaling = StandardScaler()
-#    scaling.fit(new_feature)
-#    x = scaling.transform(new_feature)
 
     return features
 
@@ -157,7 +127,7 @@ def main() -> None:
             futures = [executor.submit(process_file, filename) for filename in train_data_files]
             for future in tqdm(as_completed(futures), desc=f'Batch {counter + 1} - Loading MDP', unit="file"):
                 result = future.result()
-                observations_file, actions_file, terminals_file, video_file, audio_file = result
+                observations_file, actions_file, terminals_file, video_file, audio_file, capacity_file, lossrate_file = result
                 c = 0
                 for a in actions_file:
                     if a==20000.0:
@@ -172,19 +142,25 @@ def main() -> None:
                 audio_file = audio_file[c:]
                 # calculate rewards
                 rewards_file = []
-                if args.rewardfunc == 'QOE_V2':
-                    rewards_file = [reward_func(o, v, a) for (o, v, a) in zip(observations_file, video_file, audio_file)]
-                else:
-                    rewards_file = [reward_func(o) for o in observations_file]
-                rewards_file = np.append(rewards_file[1:], 0)
+                if args.reward != 'None':
+                    if args.rewardfunc == 'QOE_V2':
+                        rewards_file = [reward_func(o, v, a) for (o, v, a) in zip(observations_file, video_file, audio_file)]
+                    else:
+                        rewards_file = [reward_func(o) for o in observations_file]
+                    rewards_file = np.append(rewards_file[1:], 0)
+
                 # PCA dimensionality reduction of the feature
                 if args.algo.upper() == 'PCA':
                     observations_file = process_feature_pca(observations_file, args.dim)
                 elif args.algo.upper() == 'AVE':
                     observations_file = process_feature_average(observations_file)
                 elif args.algo.upper() == 'RUC':
-                    # reduced set of features
-                    observations_file = process_feature_reduction(observations_file, indexes)
+                    # reduced set of features, 15->10
+                    observations_file = process_feature_reduction(observations_file, remaining_features)
+                elif args.algo.upper() == 'RUC_LMI':
+                    # reduce the set of features: 15->10 and keep 5 long MIs only
+                    # for QOE_V3 only
+                    observations_file = process_feature_qoev3(observations_file, remaining_features)
 
                 # save all data from the single data log file
                 observations.append(observations_file)
@@ -203,6 +179,7 @@ def main() -> None:
 
         # create the file
         f_o = open(f_path, 'wb')
+
         np.savez_compressed(f_o, obs=observations, acts=actions, terms=terminals, rws=rewards, vds=videos, ads=audios)
         f_o.close()
         # increase the counter
