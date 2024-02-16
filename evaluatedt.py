@@ -10,10 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
-from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2
-from createSmallDataSet import process_feature_reduction
-from createSmallDataSet import indexes
+from BweUtils import load_train_data_from_file
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, process_feature_qoev3
 
 model_filename = ''
 data_filenames =[]
@@ -104,8 +102,6 @@ class eval_model:
         predictions = []
         bw_predictions = []
         f_rwds = []
-        s_rwds = []
-        l_rwds = []
         inner_params = {
             "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
             "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
@@ -113,14 +109,13 @@ class eval_model:
 
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
-            observations, bw_preds, r, t, videos, audios = result
+            observations, bw_preds, r, t, videos, audios, capacity, lossrate = result
             bw_predictions.append(bw_preds)
             # extract rewards
-            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
-#            f_rwds = [reward_qoe_v2(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-            #                f_reward = reward_r3net(observation)
-            if len(observations[0]) != algo.observation_shape[0]:
-                observations = process_feature_reduction(observations, indexes)
+
+            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+#            f_reward = reward_r3net(observation)
+            observations = process_feature_qoev3(observations)
 
             # returns greedy action
             for observation, f_reward in zip(observations, f_rwds):

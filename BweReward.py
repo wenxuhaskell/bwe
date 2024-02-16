@@ -106,6 +106,8 @@ class MIType(IntEnum):
     LONG = 2
     ALL = 3
 
+# for features reduction
+qoev3_features = [0, 3, 4, 5, 7, 8, 9, 10, 13, 14]
 
 def get_feature(
     observation: List[float],
@@ -185,15 +187,19 @@ class RewardFunction:
                     "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
                     "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
                 }
+            case "QOE_V3":
+                self.reward_func = reward_qoe_v3
+                self.inner_params = {
+                    "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+                    "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+                }
             case _:
                 raise ValueError(f"Unknown reward function name: {reward_func_name}")
 
     def __call__(self, observation: List[float], video: float=None, audio: float=None) -> float:
         if self.func_name == "R3NET":
             return self.reward_func(observation)
-        elif self.func_name == "QOE_V1":
-            return self.reward_func(observation, self.inner_params)
-        elif self.func_name == "QOE_V2":
+        else:
             return self.reward_func(observation, self.inner_params, video, audio)
 
 
@@ -260,7 +266,9 @@ def reward_onrl(feature_vec: List[float], rf_params: Dict[str, Any]=None) -> flo
 # 3. Loss QoE is simply a linear function of the loss rate, I don't know any better way to compute it.
 # 4. Jitter has a square-root nature, I took it from this paper: https://ieeexplore.ieee.org/document/9148101
 # Other features are not used for the reward function, but they are used for the state representation.
-def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any]) -> float:
+def reward_qoe_v1(observation: List[float], rf_params: Dict[str, Any],
+                  video_quality: float,
+                  audio_quality: float) -> float:
     qoes = dict(zip(MI, [0.0] * len(MI)))
     # 1. rate QoE: 0...1
     qoe_rates = dict(zip(MI, [0.0] * len(MI)))
@@ -343,3 +351,81 @@ def reward_qoe_v2(observation: List[float],
         final_qoe = 0.9 * final_qoe + 0.1 * quality_qoe
 
     return final_qoe
+
+
+# using 5 long MIs and reduced features set.
+def reward_qoe_v3(observation: List[float], rf_params: Dict[str, Any],
+                  video_quality: float,
+                  audio_quality: float) -> float:
+    qoes = dict(zip(MI, [0.0] * len(MI)))
+    # 1. rate QoE: 0...1
+    qoe_rates = dict(zip(MI, [0.0] * len(MI)))
+    rates = get_feature_for_mi(observation, "RECV_RATE", MIType.ALL)
+    for i, rate in enumerate(rates):
+        rf_params["MAX_RATE"][MI(i + 1)] = max(rf_params["MAX_RATE"][MI(i + 1)], rate)
+        max_rate = rf_params["MAX_RATE"][MI(i + 1)] if rf_params["MAX_RATE"][MI(i + 1)] > 0 else 1
+        # logarithmic nature scaled by the maximum observed rate in this MI
+        qoe_rates[MI(i + 1)] = np.log((np.exp(1) - 1) * (rate / max_rate) + 1)
+
+    # 2. delay QoE: 0...1
+    qoe_delays = dict(zip(MI, [0.0] * len(MI)))
+    delays = get_feature_for_mi(observation, "DELAY", MIType.ALL)
+    min_seen_delays = get_feature_for_mi(observation, "MIN_SEEN_DELAY", MIType.ALL)
+    for i, delay in enumerate(delays):
+        delay += 200  # add a substracted base delay of 200 ms to have an absolute value
+        # d_max - d / d_max - d_min
+        rf_params["MAX_DELAY"][MI(i + 1)] = max(rf_params["MAX_DELAY"][MI(i + 1)], delay)
+        max_delay = rf_params["MAX_DELAY"][MI(i + 1)] if rf_params["MAX_DELAY"][MI(i + 1)] > 0 else delay
+        qoe_delays[MI(i + 1)] = (
+            (max_delay - delay) / (max_delay - min_seen_delays[i]) if max_delay > min_seen_delays[i] else 0
+        )
+
+    # 3. loss QoE: 0...1
+    qoe_losses = dict(zip(MI, [0.0] * len(MI)))
+    losses = get_feature_for_mi(observation, "PKT_LOSS_RATIO", MIType.ALL)
+    for i, loss in enumerate(losses):
+        qoe_losses[MI(i + 1)] = 1 - loss
+
+    # 4. jitter QoE: 0...1
+    qoe_jitters = dict(zip(MI, [0.0] * len(MI)))
+    jitters = get_feature_for_mi(observation, "PKT_JITTER", MIType.ALL)
+    for i, jitter in enumerate(jitters):
+        qoe_jitters[MI(i + 1)] = -0.04 * np.sqrt(min(625, jitter)) + 1
+
+    # combine all QoEs
+    # FIXME: tune the weights!
+    for mi in MI:
+        qoes[mi] = 0.3 * qoe_rates[mi] + 0.3 * qoe_delays[mi] + 0.3 * qoe_losses[mi] + 0.1 * qoe_jitters[mi]
+
+    # QoE long term is more important than short term, 0.66 vs 0.33 SO FAR,
+    # FIXME: tune the weights!
+    short_qoe = 0.0
+    long_qoe = 0.0
+    mi_weights = get_decay_weights(5)
+    mi_weights = np.concatenate((mi_weights, mi_weights))
+    for mi in MI:
+        w = mi_weights[mi - 1]
+        if mi <= MI.SHORT_300:
+            short_qoe += w * qoes[mi]
+        else:
+            long_qoe += w * qoes[mi]
+
+    # final QoE: 0..5
+#    final_qoe = 0.0
+#    final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
+    final_qoe = 5 * long_qoe
+    return final_qoe
+
+
+# reduce 5 short MIs.
+# reduce features according to the features indexes
+def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
+    size = len(features)
+    features = np.reshape(features, [size, 15, 10])
+    # remove short MIs.
+    features = features[:,:,[5,6,7,8,9]]
+    # reduce features set according to the indexes.
+    features = features[:,qoev3_features,:]
+    features = np.reshape(features, [size,len(qoev3_features)*5])
+
+    return features

@@ -28,7 +28,7 @@ def get_device(is_ddp: bool = False) -> str:
 def load_train_data(
     datafile: os.PathLike | str,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-    data = _load_data(datafile)
+    data = load_data(datafile)
     if data is None:
         return None
 
@@ -36,13 +36,20 @@ def load_train_data(
     observations = np.array(data['observations'])
     video_quality = np.array(data['video_quality'])
     audio_quality = np.array(data['audio_quality'])
-    return observations, bandwidth_predictions, video_quality, audio_quality
+    capacity_data = None
+    if 'true_capacity' in data:
+        capacity_data = np.array(data['true_capacity'])
+    lossrate_data = None
+    if 'true_loss_rate' in data:
+        lossrate_data = np.array(data['true_loss_rate'])
+
+    return observations, bandwidth_predictions, video_quality, audio_quality, capacity_data, lossrate_data
 
 
 def load_test_data(
     datafile: os.PathLike | str,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-    data = _load_data(datafile)
+    data = load_data(datafile)
     if data is None:
         return None
 
@@ -58,7 +65,7 @@ def load_test_data(
     return observations, bandwidth_predictions, video_quality, audio_quality, capacity_data, lossrate_data
 
 
-def _load_data(datafile: os.PathLike | str) -> Optional[Dict]:
+def load_data(datafile: os.PathLike | str) -> Optional[Dict]:
     try:
         with open(datafile, 'r') as file:
             data = json.load(file)
@@ -97,12 +104,21 @@ def create_mdp_dataset_from_files(train_data_files, rw_func) -> d3rlpy.dataset.M
     actions = []
     rewards = []
     terminals = []
+    videos = []
+    audios = []
+    capacities = []
+    lossrates = []
 
     for filename in train_data_files:
         observations_file = []
         actions_file = []
         rewards_file = []
         terminals_file = []
+        video_file = []
+        audio_file = []
+        capacity_file = []
+        lossrate_file = []
+
         print(f"Load file {filename}...")
         ext = pathlib.Path(filename).suffix
         if ext.upper() == '.NPZ':
@@ -110,12 +126,27 @@ def create_mdp_dataset_from_files(train_data_files, rw_func) -> d3rlpy.dataset.M
             observations_file = np.array(loaded['obs'])
             actions_file = np.array(loaded['acts'])
             terminals_file = np.array(loaded['terms'])
+            if 'vds' in loaded:
+                video_file = np.array(loaded['vds'])
+
+            if 'ads' in loaded:
+                audio_file = np.array(loaded['ads'])
+
+            if 'capacity' in loaded:
+                capacity_file = np.array(loaded['capacity'])
+
+            if 'lossrate' in loaded:
+                lossrate_file = np.array(loaded['lossrate'])
+
+            if 'terms' in loaded:
+                terminals_file = np.array(loaded['terms'])
+
             if 'rws' in loaded:
                 rewards_file = np.array(loaded['rws'])
             else:
                 rewards_file = np.array([rw_func(o) for o in observations_file])
         elif ext.upper() == '.JSON':
-            observations_file, actions_file, _, _ = load_train_data(filename)
+            observations_file, actions_file, video_file, audio_file, capacity_file, lossrate_file = load_train_data(filename)
             rewards_file = np.array([rw_func(o) for o in observations_file])
             terminals_file = np.zeros(len(observations_file))
             terminals_file[-1] = 1
@@ -124,11 +155,19 @@ def create_mdp_dataset_from_files(train_data_files, rw_func) -> d3rlpy.dataset.M
         actions.append(actions_file)
         rewards.append(rewards_file)
         terminals.append(terminals_file)
+        if len(capacity_file) > 0:
+            capacities.append(capacity_file)
+        if len(lossrate_file) > 0:
+            lossrates.append((lossrate_file))
 
     observations = np.concatenate(observations)
     actions = np.concatenate(actions)
     rewards = np.concatenate(rewards)
     terminals = np.concatenate(terminals)
+    if len(capacities) > 0:
+        capacities = np.concatenate(capacities)
+    if len(lossrates) > 0:
+        lossrates = np.concatenate(lossrates)
 
     # create the offline learning dataset
     dataset = d3rlpy.dataset.MDPDataset(
@@ -145,8 +184,11 @@ def create_mdp_dataset_from_files(train_data_files, rw_func) -> d3rlpy.dataset.M
 def create_mdp_dataset_from_file(train_data_file, rw_func) -> d3rlpy.dataset.MDPDataset:
     observations_file = []
     actions_file = []
+    video_file = []
+    audio_file = []
     rewards_file = []
-    terminals_file = []
+    capacity_file = []
+    lossrate_file = []
     print(f"Load file {train_data_file}...")
     ext = pathlib.Path(train_data_file).suffix
     if ext.upper() == '.NPZ':
@@ -154,6 +196,21 @@ def create_mdp_dataset_from_file(train_data_file, rw_func) -> d3rlpy.dataset.MDP
         observations_file = np.array(loaded['obs'])
         actions_file = np.array(loaded['acts'])
         terminals_file = np.array(loaded['terms'])
+        if 'vds' in loaded:
+            video_file = np.array(loaded['vds'])
+
+        if 'ads' in loaded:
+            audio_file = np.array(loaded['ads'])
+
+        if 'capacity' in loaded:
+            capacity_file = np.array(loaded['capacity'])
+
+        if 'lossrate' in loaded:
+            lossrate_file = np.array(loaded['lossrate'])
+
+        if 'terms' in loaded:
+            terminals_file = np.array(loaded['terms'])
+
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
         else:
@@ -180,8 +237,12 @@ def create_gym_dataset_from_file(train_data_file, rw_func):
 
     observations_file = []
     actions_file = []
+    video_file = []
+    audio_file = []
     rewards_file = []
-    terminals_file = []
+    capacity_file = []
+    lossrate_file = []
+
     print(f"Load file {train_data_file}...")
     ext = pathlib.Path(train_data_file).suffix
     if ext.upper() == '.NPZ':
@@ -189,10 +250,25 @@ def create_gym_dataset_from_file(train_data_file, rw_func):
         observations_file = np.array(loaded['obs'])
         actions_file = np.array(loaded['acts'])
         terminals_file = np.array(loaded['terms'])
+        if 'vds' in loaded:
+            video_file = np.array(loaded['vds'])
+
+        if 'ads' in loaded:
+            audio_file = np.array(loaded['ads'])
+
+        if 'capacity' in loaded:
+            capacity_file = np.array(loaded['capacity'])
+
+        if 'lossrate' in loaded:
+            lossrate_file = np.array(loaded['lossrate'])
+
+        if 'terms' in loaded:
+            terminals_file = np.array(loaded['terms'])
+
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
     elif ext.upper() == '.JSON':
-        observations_file, actions_file, _, _ = load_train_data(train_data_file)
+        observations_file, actions_file, video_file, audio_file, capacity_file, lossrate_file = load_train_data(train_data_file)
         terminals_file = np.zeros(len(observations_file))
         terminals_file[-1] = 1
 
@@ -220,14 +296,14 @@ def load_train_data_from_file(train_data_file):
     video_file = []
     audio_file = []
     rewards_file = []
+    capacity_file = []
+    lossrate_file = []
     terminals_file = []
     print(f"Load file {train_data_file}...")
     ext = pathlib.Path(train_data_file).suffix
     if ext.upper() == '.NPZ':
         loaded = np.load(train_data_file, 'rb')
-        
         observations_file = np.array(loaded['obs'])
-        
         actions_file = np.array(loaded['acts'])
         
         if 'vds' in loaded:
@@ -235,16 +311,25 @@ def load_train_data_from_file(train_data_file):
         
         if 'ads' in loaded:
             audio_file = np.array(loaded['ads'])
-        
-        terminals_file = np.array(loaded['terms'])
+
+        if 'capacity' in loaded:
+            capacity_file = np.array(loaded['capacity'])
+
+        if 'lossrate' in loaded:
+            lossrate_file = np.array(loaded['lossrate'])
+
+        if 'terms' in loaded:
+            terminals_file = np.array(loaded['terms'])
         
         if 'rws' in loaded:
             rewards_file = np.array(loaded['rws'])
     elif ext.upper() == '.JSON':
-        observations_file, actions_file, video_file, audio_file = load_train_data(train_data_file)
+        observations_file, actions_file, video_file, audio_file, capacity_file, lossrate_file = load_train_data(train_data_file)
         terminals_file = np.zeros(len(observations_file))
         terminals_file[-1] = 1
 
     terminals_file = np.random.randint(2, size=len(actions_file))
 
-    return observations_file, actions_file, rewards_file, terminals_file, video_file, audio_file
+    return observations_file, actions_file, rewards_file, terminals_file, video_file, audio_file, capacity_file, lossrate_file
+
+

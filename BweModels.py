@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 import BweEncoder
-from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi
+from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3
 
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
@@ -245,15 +245,20 @@ class BweDrl:
 
     # create MDP dataset for current worker
     def load_MDP_dataset(self, filename) -> d3rlpy.dataset.MDPDataset:
-        observations, actions, rewards, terminals, videos, audios = load_train_data_from_file(filename)
+        observations, actions, rewards, terminals, videos, audios, capacity, lossrate = load_train_data_from_file(filename)
         # calculate rewards if needed
         if len(rewards) == 0 :
-            if self._params['reward_func_name'].upper() == 'QOE_V1':
+            if self._params['reward_func_name'].upper() == 'R3NET':
                 rewards = np.array([self._reward_func(o) for o in observations])
-            elif self._params['reward_func_name'].upper() == 'QOE_V2':
+            else:
                 rewards = np.array([self._reward_func(o, v, a) for (o, v, a) in zip(observations, videos, audios)])
+
             r_last = rewards[-1]
             rewards = np.append(rewards[1:], r_last)
+
+        # feature reduction if necessary.
+        if self._params['reward_func_name'].upper() == 'QOE_V3':
+            observations = process_feature_qoev3(observations)
 
         start = 0
         end = len(actions)

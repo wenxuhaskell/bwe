@@ -1,4 +1,5 @@
 import argparse
+import pandas as pd
 import tkinter
 from tkinter import filedialog, Tk, Button, Label, messagebox
 from typing import Any, Dict, List
@@ -10,10 +11,9 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
-from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2
-from createSmallDataSet import process_feature_reduction
-from createSmallDataSet import indexes
+from BweUtils import load_train_data_from_file
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, process_feature_qoev3
+
 
 model_filename = ''
 data_filenames =[]
@@ -93,8 +93,6 @@ class eval_model:
 
         self.ask_plot_reward()
 
-#        self.ask_plot_log()
-
         self.eval_model()
 
         label_model.grid(column=1, row=1)
@@ -117,6 +115,37 @@ class eval_model:
     def ask_plot_reward(self):
         self.__plot_reward = messagebox.askyesno("Plot rewards?")
 
+    def calc_action_diff(self, pred, bwpred):
+        # percentiles:
+        # up1 - 95%, low1 - 5%
+        # up2 - 90%, low2 - 10%
+        # up3 - 85%, low3 - 15%
+        # up4 - 80%, low4 - 20%
+        # up5 - 75%, low5 - 25%
+        per_index = [95,90,85,80,75,70,65,60,55,50,45,40,35,30,25,20,15,10,5]
+        self.__pred_per = np.round(np.percentile(pred, per_index)/1000, 1)
+        self.__bwpred_per = np.round(np.percentile(bwpred, per_index)/1000, 1)
+
+        self.__diff_per = self.__pred_per - self.__bwpred_per
+
+        row_index = ['95%', '90%', '85%', '80%', '75%', '70%', '65%', '60%', '55%', '50%', '45%', '40%', '35%', '30%', '25%', '20%', '15%', '10%', '5%']
+
+        self.__diffs = (pred - bwpred)/1000
+
+        data = {
+            'Model': self.__pred_per,
+            'Baseline': self.__bwpred_per,
+            'Diff': self.__diff_per
+        }
+
+        df = pd.DataFrame(data, row_index)
+
+        print('Percentiles in kbps \n')
+        print(df)
+
+        print("Average difference [unit: kbps] \n    ")
+        ave = np.sum(self.__diffs)/len(self.__diffs)
+        print(ave)
 
     def eval_model(self):
         if self.__model_filename == '':
@@ -145,21 +174,18 @@ class eval_model:
             "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
         }
 
-
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
-            observations, bw_preds, r, t, videos, audios = result
+            observations, bw_preds, r, t, videos, audios, capacity, lossrate = result
             bw_predictions.append(bw_preds)
             # extract rewards
-            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
-#            f_rwds = [reward_qoe_v2(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-            #                f_reward = reward_r3net(observation)
-            if len(observations[0]) != algo.observation_shape[0]:
-                observations = process_feature_reduction(observations, indexes)
+#            f_rwds = [reward_r3net(o, inner_params) for o in observations]
+            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+
+            observations = process_feature_qoev3(observations)
 
             # returns greedy action
             for observation in observations:
-
                 # add batch dimension for prediction
                 observation = observation.reshape((1, len(observation))).astype(np.float32)
                 prediction = algo.predict(observation)[0]
@@ -170,6 +196,7 @@ class eval_model:
 
         # plot the predictions
         x = range(len(predictions))
+        self.calc_action_diff(predictions, bw_predictions)
         predictions_scaled = [x / 1000000 for x in predictions]
         bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
 

@@ -11,9 +11,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_test_data, load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2
-from createSmallDataSet import process_feature_reduction
-from createSmallDataSet import indexes
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, process_feature_qoev3
 
 model_filename = ''
 data_filenames =[]
@@ -39,7 +37,7 @@ class eval_model:
     def run(self):
         window = Tk()
 
-        window.title("Compare Decision Transformer with Q Learning")
+        window.title("Compare Q Learning with Decision Transformer")
 
         window.geometry("600x400")
 
@@ -71,12 +69,12 @@ class eval_model:
 
     def select_model_file1(self):
         self.__model_filename1 = filedialog.askopenfilename(initialdir=self.__initdir,
-                                              title="Select a DT model file",
+                                              title="Select a Q model file",
                                               filetypes=(("Model file", "*.d3"), ("All files", "*.*")))
 
     def select_model_file2(self):
         self.__model_filename2 = filedialog.askopenfilename(initialdir=self.__initdir,
-                                              title="Select a model file",
+                                              title="Select a DT model file",
                                               filetypes=(("Model file", "*.d3"), ("All files", "*.*")))
 
     def select_data_file(self):
@@ -106,9 +104,9 @@ class eval_model:
         register_encoder_factory(LSTMEncoderFactory)
 
         algo1 = d3rlpy.load_learnable(self.__model_filename1, device='cuda:0' if torch.cuda.is_available() else 'cpu:0')
-        actor = algo1.as_stateful_wrapper(target_return=0)
 
         algo2 = d3rlpy.load_learnable(self.__model_filename2, device='cuda:0' if torch.cuda.is_available() else 'cpu:0')
+        actor = algo2.as_stateful_wrapper(target_return=0)
 
         # load the list of log files under the given directory
         # iterate over files in that directory
@@ -125,24 +123,25 @@ class eval_model:
 
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
-            observations, bw_preds, r, t, videos, audios = result
+            observations, bw_preds, r, t, videos, audios, capacity, lossrate = result
             bw_predictions.append(bw_preds)
+
             # extract rewards
-            f_rwds = [reward_qoe_v1(o, inner_params) for o in observations]
-#            f_rwds = [reward_qoe_v2(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-            #                f_reward = reward_r3net(observation)
-            if len(observations[0]) != algo1.observation_shape[0]:
-                observations = process_feature_reduction(observations, indexes)
+            #            f_rwds = [reward_r3net(o, inner_params) for o in observations]
+            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+
+            observations = process_feature_qoev3(observations)
 
             # returns greedy action
             for observation, f_reward in zip(observations, f_rwds):
                 # add batch dimension for prediction
                 #observation = observation.reshape((1, len(observation))).astype(np.float32)
-                prediction1 = actor.predict(observation, f_reward)
-                predictions1.append(prediction1)
-                observation = observation.reshape((1, len(observation))).astype(np.float32)
-                prediction2 = algo2.predict(observation)[0]
+                prediction2 = actor.predict(observation, f_reward)
                 predictions2.append(prediction2)
+
+                observation = observation.reshape((1, len(observation))).astype(np.float32)
+                prediction1 = algo1.predict(observation)[0]
+                predictions1.append(prediction1)
 
 
         bw_predictions = np.concatenate(bw_predictions)
