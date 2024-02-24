@@ -1,10 +1,12 @@
 import itertools
 import torch
+import random
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, Dataset
 from torch import nn, optim
+import onnxruntime
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from datetime import datetime
@@ -30,23 +32,29 @@ class MyNN(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(MyNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 256)
-        nn.init.kaiming_uniform_(self.fc1.weight, nonlinearity="relu")
+#        nn.init.kaiming_uniform_(self.fc1.weight, nonlinearity="relu")
         self.fc2 = nn.Linear(256, 256)
-        nn.init.kaiming_uniform_(self.fc2.weight, nonlinearity="relu")
-        self.fc3 = nn.Linear(256, 256)
-        nn.init.kaiming_uniform_(self.fc3.weight, nonlinearity="relu")
-        self.fc4 = nn.Linear(256, output_dim)
-        nn.init.kaiming_uniform_(self.fc4.weight, nonlinearity="tanh")
+#        nn.init.kaiming_uniform_(self.fc2.weight, nonlinearity="relu")
+        self.fc3 = nn.Linear(256, 64)
+#        nn.init.kaiming_uniform_(self.fc3.weight, nonlinearity="relu")
+        self.fc4 = nn.Linear(64, output_dim)
+#        nn.init.kaiming_uniform_(self.fc4.weight, nonlinearity="tanh")
 
     def forward(self, inp):
         inp = torch.relu(self.fc1(inp))
         inp = torch.relu(self.fc2(inp))
         inp = torch.relu(self.fc3(inp))
-        oup = torch.tanh(self.fc4(inp))
+        oup = self.fc4(inp)
 
         return oup
 
-def calc_qoe(ve, ae) -> float:
+
+def to_numpy(tensor):
+    return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
+
+
+# used weighted combination of video and audio qualities as QoE
+def calc_qoe_v1(ve, ae) -> float:
     qoe = 0.0
     if not np.isnan(ve):
         if not np.isnan(ae):
@@ -59,14 +67,23 @@ def calc_qoe(ve, ae) -> float:
     return qoe
 
 
-def save_model(model, batch_size, x, y):
-    x = torch.randn(batch_size, 1, 224, 224, requires_grad=True)
+# simply take video_quality as QoE
+def calc_qoe_v2(ve, ae) -> float:
+    qoe = 0.0
+    if not np.isnan(ve):
+        qoe = ve
+
+    return qoe
+
+
+def save_model(model, batch_size, input_dim, filename):
+    x = torch.randn(batch_size, input_dim, requires_grad=True)
     torch_out = model(x)
 
     # Export the model
     torch.onnx.export(model,  # model being run
                       x,  # model input (or a tuple for multiple inputs)
-                      "super_resolution.onnx",  # where to save the model (can be a file or file-like object)
+                      filename,  # where to save the model (can be a file or file-like object)
                       export_params=True,  # store the trained parameter weights inside the model file
                       opset_version=10,  # the ONNX version to export the model to
                       do_constant_folding=True,  # whether to execute constant folding for optimization
@@ -75,10 +92,8 @@ def save_model(model, batch_size, x, y):
                       dynamic_axes={'input': {0: 'batch_size'},  # variable length axes
                                     'output': {0: 'batch_size'}})
 
-    ts = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    model_dir = f'QOE_{ts}'
+    return
 
-    pass
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,6 +101,7 @@ def main():
     parser.add_argument("-b", "--batchsize", type=int, default=32)
     parser.add_argument("-m", "--maxfiles", type=int, default=3)
     parser.add_argument("-e", "--numepochs", type=int, default=100)
+    parser.add_argument("-p", "--plot", default=False, action="store_true")
     args = parser.parse_args()
 
     batch_size = args.batchsize
@@ -107,8 +123,12 @@ def main():
     observations = np.concatenate(observations)
     videos = np.concatenate(videos)
     audios = np.concatenate(audios)
+
     # calculate QoE
-    qoes = np.array([calc_qoe(v,a) for (v, a) in zip(videos, audios)])
+    qoes = np.array([calc_qoe_v2(v,a) for (v, a) in zip(videos, audios)])
+    indices = [i for i, x in enumerate(qoes) if x > 0.0]
+    qoes = qoes[indices]
+    observations = observations[indices]
 
     # scaling
     obs_scaler = StandardScaler()
@@ -137,7 +157,7 @@ def main():
     model = MyNN(observations.shape[1], 1)
     print(model)
 
-    learning_rate = 0.1
+    learning_rate = 0.01
 
     loss_fn = nn.MSELoss()
 
@@ -161,18 +181,25 @@ def main():
 
     print("Training Complete")
 
+    print("Saving the model")
+    ts = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    model_filename = f"QOE/qoe_{ts}.onnx"
+    save_model(model, 1, observations.shape[1], model_filename)
 
     """
     Training Complete
     """
 
-    steps = range(len(loss_values))
+    ave_loss_per_epoch = np.sum(loss_values) / len(loss_values)
+    print(f"Average loss per epoch: {ave_loss_per_epoch}")
 
-    plt.plot(steps, np.array(loss_values))
-    plt.title("Step-wise Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.show()
+    if args.plot:
+        steps = range(len(loss_values))
+        plt.plot(steps, np.array(loss_values))
+        plt.title(f"Step-wise Loss \n Average loss per epoch: {ave_loss_per_epoch}")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.show()
 
     """
     We're not training so we don't need to calculate the gradients for our outputs
@@ -186,30 +213,59 @@ def main():
             y_test.append(y)
 
 
-    y_pred = list(itertools.chain(*y_pred))
-    y_test = list(itertools.chain(*y_test))
+    y_pred = np.array(list(itertools.chain(*y_pred)))
+    y_test = np.array(list(itertools.chain(*y_test)))
 
-    x = range(len(y_pred))
+    ave_pred_error_scaled = np.sum(np.absolute(y_pred - y_test)) / len(y_pred)
+    print(f"Average prediction error (scaled): {ave_pred_error_scaled}")
 
-#    plt.plot(1,2,1)
-    plt.plot(x, y_pred, label="model estimate scaled")
-    plt.plot(x, y_test, label="existing estimate scaled")
-    plt.legend()
-    plt.xlabel('step')
-    plt.ylabel('QoE')
-    plt.show()
+    if args.plot:
+    #    plt.plot(1,2,1)
+        x = range(len(y_pred))
+        plt.plot(x, y_pred, label="model estimate scaled")
+        plt.plot(x, y_test, label="existing estimate scaled")
+        plt.legend()
+        plt.title(f"Average prediction error (scaled): {ave_pred_error_scaled}")
+        plt.xlabel('step')
+        plt.ylabel('QoE')
+        plt.show()
 
     predicted_rev = qoe_scaler.inverse_transform(y_pred)
     test_rev = qoe_scaler.inverse_transform(y_test)
 
-#    plt.subplot(1,2,2)
-    plt.plot(x, predicted_rev, label="model estimate")
-    plt.plot(x, test_rev, label="existing estimate")
-    plt.legend()
-    plt.xlabel('step')
-    plt.ylabel('QoE')
+    ave_pred_error = np.sum(np.absolute(predicted_rev - test_rev)) / len(predicted_rev)
+    print(f"Average prediction error: {ave_pred_error}")
 
-    plt.show()
+    if args.plot:
+    #    plt.subplot(1,2,2)
+        x = range(len(predicted_rev))
+        plt.plot(x, predicted_rev, label="model estimate")
+        plt.plot(x, test_rev, label="existing estimate")
+        plt.legend()
+        plt.title(f"Average prediction error: {ave_pred_error}")
+        plt.xlabel('step')
+        plt.ylabel('QoE')
+
+        plt.show()
+
+    ort_session = onnxruntime.InferenceSession(path_or_bytes=model_filename, providers=["CPUExecutionProvider"])
+
+    i = random.randint(1, len(X_test))
+    observation = X_test[i]
+
+    # compute ONNX Runtime output prediction
+    observation = observation.reshape((1, len(observation))).astype(np.float32)
+    ort_inputs = {ort_session.get_inputs()[0].name: observation}
+    ort_outs = ort_session.run(None, ort_inputs)
+
+    # set the model to inference mode
+    model.eval()
+
+    torch_out = model(torch.tensor(observation.astype(np.float32)))
+    # compare ONNX Runtime and PyTorch results
+    np.testing.assert_allclose(to_numpy(torch_out), ort_outs[0], rtol=1e-03, atol=1e-05)
+
+    print("Exported model has been tested with ONNXRuntime, and the result looks good!")
 
 if __name__ == "__main__":
 
