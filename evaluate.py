@@ -180,16 +180,16 @@ class eval_model:
             # extract rewards
 #            f_rwds = [reward_r3net(o, inner_params) for o in observations]
             # for qoe_v3
-#            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-#            observations = process_feature_qoev3(observations)
+            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+            observations = process_feature_qoev3(observations)
             # for qoe_v4
-            f_rwds = np.array([reward_qoe_v4(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)])
+#            f_rwds = np.array([reward_qoe_v4(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)])
             # exclude reward of NANs
-            indices = [i for i, x in enumerate(f_rwds) if not np.isnan(x)]
-            f_rwds = f_rwds[indices]
-            bw_preds = bw_preds[indices]
-            observations = observations[indices]
-            observations = process_feature_qoev4(observations)
+#            indices = [i for i, x in enumerate(f_rwds) if not np.isnan(x)]
+#            f_rwds = f_rwds[indices]
+#            bw_preds = bw_preds[indices]
+#            observations = observations[indices]
+#            observations = process_feature_qoev4(observations)
 
             # add baseline estimates
             bw_predictions.append(bw_preds)
