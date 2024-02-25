@@ -281,6 +281,7 @@ def save_best_trail(study, params):
     best_trial.params['pruned'] = num_pruned
     best_trial.params['timestamp'] = ts_str
     best_trial.params['tune_evaluator'] = params['tune_evaluator']
+    best_trial.params['reward_func'] = params['reward_func_name']
 
     best_trial.user_attrs['completed'] = num_completed
     best_trial.user_attrs['pruned'] = num_pruned
