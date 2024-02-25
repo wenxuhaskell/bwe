@@ -31,6 +31,8 @@ class eval_model:
         self.__data_filenames = []
         self.__model_filename1 = ''
         self.__model_filename2 = ''
+        self.__plot_path = ''
+        self.__show_plot = False
         self.__plot_log = False
         self.__plot_reward = False
 
@@ -56,9 +58,11 @@ class eval_model:
         data_file_names = ''.join([o + '\n' for o in self.__data_filenames])
         label_data = Label(text=data_file_names)
 
+        self.select_output_directory()
+
         self.ask_plot_reward()
 
-#        self.ask_plot_log()
+        self.ask_show_plot()
 
         self.eval_model()
 
@@ -82,6 +86,13 @@ class eval_model:
                                                 title="Select data files",
                                                 filetypes=(("Json files", "*.json"), ("Npz files", "*.npz")))
 
+    def select_output_directory(self):
+        self.__plot_path = filedialog.askdirectory()
+        print(self.__plot_path)
+
+    def ask_show_plot(self):
+        self.__show_plot = messagebox.askyesno("Show each plot?")
+
     def ask_plot_log(self):
         self.__plot_log = messagebox.askyesno("Plot features?")
 
@@ -95,6 +106,10 @@ class eval_model:
 
         if self.__data_filenames == []:
             print("Please select data files!")
+            return
+
+        if self.__plot_path == '':
+            print("Please select the output folder!")
             return
 
         print(f"Load the pre-trained models {self.__model_filename1} and {self.__model_filename2}")
@@ -111,10 +126,6 @@ class eval_model:
         # load the list of log files under the given directory
         # iterate over files in that directory
 
-        predictions1 = []
-        predictions2 = []
-        bw_predictions = []
-        f_rwds = []
         inner_params = {
             "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
             "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
@@ -123,8 +134,7 @@ class eval_model:
 
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
-            observations, bw_preds, r, t, videos, audios, capacity, lossrate = result
-            bw_predictions.append(bw_preds)
+            observations, bw_predictions, r, t, videos, audios, capacity, lossrate = result
 
             # extract rewards
             #            f_rwds = [reward_r3net(o, inner_params) for o in observations]
@@ -132,6 +142,8 @@ class eval_model:
 
             observations = process_feature_qoev3(observations)
 
+            predictions1 = []
+            predictions2 = []
             # returns greedy action
             for observation, f_reward in zip(observations, f_rwds):
                 # add batch dimension for prediction
@@ -143,46 +155,52 @@ class eval_model:
                 prediction1 = algo1.predict(observation)[0]
                 predictions1.append(prediction1)
 
+            f_rwds = np.append(f_rwds[1:], f_rwds[-1])
 
-        bw_predictions = np.concatenate(bw_predictions)
-        f_rwds = np.append(f_rwds[1:], f_rwds[-1])
+            # plot the predictions
+            x = range(len(predictions1))
+            predictions1_scaled = [x / 1000000 for x in predictions1]
+            predictions2_scaled = [x / 1000000 for x in predictions2]
+            bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
 
-        # plot the predictions
-        x = range(len(predictions1))
-        predictions1_scaled = [x / 1000000 for x in predictions1]
-        predictions2_scaled = [x / 1000000 for x in predictions2]
-        bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
+            algo_name1 = self.__model_filename1.split('/')[-1].split('.')[0].replace('model', '')
+            algo_name2 = self.__model_filename2.split('/')[-1].split('.')[0].replace('model', '')
+            log_file_name = filename.split('/')[-1]
+            log_file_name_prefix = log_file_name.split('.')[0]
 
-        algo_name1 = self.__model_filename1.split('/')[-1].split('.')[0].replace('model', '')
-        algo_name2 = self.__model_filename2.split('/')[-1].split('.')[0].replace('model', '')
-        log_file_name = filename.split('/')[-1]
+            if not self.__plot_reward:
+                plt.clf()
+                plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
+                plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
+                plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
+                plt.legend()
+                plt.ylabel("Bandwidth [mbps]")
+                plt.xlabel("Step")
+                plt.title(f'{algo_name1} vs {algo_name2} \n Log: {log_file_name}')
+                plt.savefig(f'{self.__plot_path}/{log_file_name_prefix}_e.png')
+                if self.__show_plot:
+                    plt.show()
+            else:
+                plt.clf()
+                plt.subplot(2, 1, 1)
+                plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
+                plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
+                plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
+                plt.legend()
+                plt.ylabel("Bandwidth [mbps]")
+                plt.xlabel("Step")
+                plt.title(f'{algo_name1} vs {algo_name2} \n {log_file_name}')
 
-        if not self.__plot_reward:
-            plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
-            plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
-            plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
-            plt.legend()
-            plt.ylabel("Bandwidth [mbps]")
-            plt.xlabel("Step")
-            plt.title(f'{algo_name1} vs {algo_name2} \n Log: {log_file_name}')
-            plt.show()
-        else:
-            plt.subplot(2, 1, 1)
-            plt.plot(x, predictions1_scaled, linewidth=0.8, label=algo_name1)
-            plt.plot(x, predictions2_scaled, linewidth=0.8, label=algo_name2)
-            plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
-            plt.legend()
-            plt.ylabel("Bandwidth [mbps]")
-            plt.xlabel("Step")
-            plt.title(f'{algo_name1} vs {algo_name2} \n {log_file_name}')
+                plt.subplot(2, 1, 2)
+                plt.plot(x, f_rwds, linewidth=1, label="reward")
+                plt.legend()
+                plt.ylabel('Reward')
+                plt.xlabel(f'Evaluate on {log_file_name}')
+                plt.savefig(f'{self.__plot_path}/{log_file_name_prefix}_e_rw.png')
+                if self.__show_plot:
+                    plt.show()
 
-            plt.subplot(2, 1, 2)
-            plt.plot(x, f_rwds, linewidth=1, label="reward")
-            plt.legend()
-            plt.ylabel('Reward')
-            plt.xlabel(f'Evaluate on {log_file_name}')
-            plt.show()
-
+        print("Evaluation finishes!")
 
 def main() -> None:
     parser = argparse.ArgumentParser()
