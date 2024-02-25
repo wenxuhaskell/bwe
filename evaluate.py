@@ -12,7 +12,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, process_feature_qoev3
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, reward_qoe_v4, process_feature_qoev3, process_feature_qoev4
 
 
 model_filename = ''
@@ -177,14 +177,23 @@ class eval_model:
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
             observations, bw_preds, r, t, videos, audios, capacity, lossrate = result
-            bw_predictions.append(bw_preds)
             # extract rewards
 #            f_rwds = [reward_r3net(o, inner_params) for o in observations]
-            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+            # for qoe_v3
+#            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+#            observations = process_feature_qoev3(observations)
+            # for qoe_v4
+            f_rwds = np.array([reward_qoe_v4(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)])
+            # exclude reward of NANs
+            indices = [i for i, x in enumerate(f_rwds) if not np.isnan(x)]
+            f_rwds = f_rwds[indices]
+            bw_preds = bw_preds[indices]
+            observations = observations[indices]
+            observations = process_feature_qoev4(observations)
 
-            observations = process_feature_qoev3(observations)
-
-            # returns greedy action
+            # add baseline estimates
+            bw_predictions.append(bw_preds)
+            # predict the bandwidth
             for observation in observations:
                 # add batch dimension for prediction
                 observation = observation.reshape((1, len(observation))).astype(np.float32)

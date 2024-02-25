@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 import BweEncoder
-from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3
+from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3, process_feature_qoev4
 
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
@@ -259,9 +259,16 @@ class BweDrl:
         # feature reduction if necessary.
         if self._params['reward_func_name'].upper() == 'QOE_V3':
             observations = process_feature_qoev3(observations)
+        elif self._params['reward_func_name'].upper() == 'QOE_V4':
+            # exclude reward of NANs
+            indices = [i for i, x in enumerate(rewards) if not np.isnan(x)]
+            rewards = rewards[indices]
+            observations = observations[indices]
+            # keep 5 long MIs
+            observations = process_feature_qoev4(observations)
 
         start = 0
-        end = len(actions)
+        end = len(observations)
         # divide dataset
         if self._world_size > 1:
             num_transitions = end

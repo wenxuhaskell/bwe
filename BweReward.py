@@ -193,6 +193,12 @@ class RewardFunction:
                     "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
                     "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
                 }
+            case "QOE_V4":
+                self.reward_func = reward_qoe_v4
+                self.inner_params = {
+                    "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+                    "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+                }
             case _:
                 raise ValueError(f"Unknown reward function name: {reward_func_name}")
 
@@ -429,3 +435,13 @@ def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
     features = np.reshape(features, [size,len(qoev3_features)*5])
 
     return features
+
+
+def reward_qoe_v4(observation: List[float], rf_params: Dict[str, Any],
+                  video_quality: float,
+                  audio_quality: float) -> float:
+    return video_quality
+
+
+def process_feature_qoev4(features: np.ndarray) -> np.ndarray:
+    return process_feature_qoev3(features)
