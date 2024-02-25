@@ -1,4 +1,6 @@
 import itertools
+import json
+
 import torch
 import random
 import numpy as np
@@ -195,11 +197,13 @@ def main():
 
     if args.plot:
         steps = range(len(loss_values))
+        plt.clf()
         plt.plot(steps, np.array(loss_values))
         plt.title(f"Step-wise Loss \n Average loss per epoch: {ave_loss_per_epoch}")
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
-        plt.show()
+        plt.savefig(f"QOE/ave_loss_{ts}.png")
+#        plt.show()
 
     """
     We're not training so we don't need to calculate the gradients for our outputs
@@ -222,13 +226,15 @@ def main():
     if args.plot:
     #    plt.plot(1,2,1)
         x = range(len(y_pred))
+        plt.clf()
         plt.plot(x, y_pred, label="model estimate scaled")
         plt.plot(x, y_test, label="existing estimate scaled")
         plt.legend()
         plt.title(f"Average prediction error (scaled): {ave_pred_error_scaled}")
         plt.xlabel('step')
         plt.ylabel('QoE')
-        plt.show()
+        plt.savefig(f"QOE/ave_pred_error_scaled_{ts}.png")
+#        plt.show()
 
     predicted_rev = qoe_scaler.inverse_transform(y_pred)
     test_rev = qoe_scaler.inverse_transform(y_test)
@@ -239,14 +245,30 @@ def main():
     if args.plot:
     #    plt.subplot(1,2,2)
         x = range(len(predicted_rev))
+        plt.clf()
         plt.plot(x, predicted_rev, label="model estimate")
         plt.plot(x, test_rev, label="existing estimate")
         plt.legend()
         plt.title(f"Average prediction error: {ave_pred_error}")
         plt.xlabel('step')
         plt.ylabel('QoE')
+        plt.savefig(f"QOE/ave_pred_error_{ts}.png")
+#        plt.show()
 
-        plt.show()
+    # save the number of epoches
+    log_filename = f"QOE/qoe_{ts}.json"
+
+    log = {
+        'epoches': num_epochs,
+        'ave_loss_per_epoch': ave_loss_per_epoch,
+        'ave_pred_error_scaled': ave_pred_error_scaled,
+        'ave_pred_error': ave_pred_error
+    }
+
+    with open(log_filename, 'a') as f:
+        # saving training log
+        f.write('\n')
+        json.dump(log, f)
 
     ort_session = onnxruntime.InferenceSession(path_or_bytes=model_filename, providers=["CPUExecutionProvider"])
 
@@ -268,6 +290,4 @@ def main():
     print("Exported model has been tested with ONNXRuntime, and the result looks good!")
 
 if __name__ == "__main__":
-
     main()
-
