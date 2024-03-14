@@ -119,6 +119,8 @@ class eval_model:
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
             observations, bw_predictions, r, t, videos, audios, capacity, lossrate = result
+            # for r3net
+#            f_rwds = [reward_r3net(o, inner_params) for (o, v, a) in zip(observations, videos, audios)]
             # for qoe_v3
             f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
             observations = process_feature_qoev3(observations)
