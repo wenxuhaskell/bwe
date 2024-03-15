@@ -20,5 +20,7 @@
   "evaluator": true,
   "tune_evaluator": "action_diff",
   "finetune": false,
-  "device": "cpu:0"
+  "device": "cpu:0",
+  "continue_training": true,
+  "model_file": ""
 }

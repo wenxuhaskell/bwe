@@ -207,9 +207,8 @@ class BweDrl:
         register_encoder_factory(LSTMEncoderFactory)
 
     # create the model
-    def create_model(self, params=None):
-        if not params:
-            self._params = params
+    def create_model(self, params):
+        self._params = params
 
         if self._params['algorithm_name'] == 'CQL':
             self._algo = createCQL(self._params)
@@ -232,6 +231,13 @@ class BweDrl:
             print("Please provide a configuration file with a valid algorithm name!\n")
             return
 
+        if self._params['continue_training'] and self._params['model_file'] != '':
+            print(f'Continue training the pre-trained model')
+            pretrained_model = d3rlpy.load_learnable(self._params['model_file'], device=self._device)
+            self._algo.create_impl(pretrained_model.observation_shape, pretrained_model.action_size)
+            self._algo.copy_q_function_from(pretrained_model)
+            self._algo.copy_policy_from(pretrained_model)
+            print(f"Copy the q and policy from pretrained model{self._params['model_file']}")
 
     # retrieve the name of algorithms
     def get_algo_name(self) -> str:
@@ -551,8 +557,8 @@ def createCQL(params):
     _temp_learning_rate = params["temp_learning_rate"]
     _alpha_learning_rate = params["alpha_learning_rate"]
 
-#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
-    ac_encoder_factory = BweEncoder.LSTMEncoderFactory(32)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+#    ac_encoder_factory = BweEncoder.LSTMEncoderFactory(32)
     cql = d3rlpy.algos.CQLConfig(
         batch_size=_batch_size,
         gamma=_gamma,
@@ -572,7 +578,7 @@ def createCQL(params):
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         action_scaler=d3rlpy.preprocessing.MinMaxActionScaler(),
         reward_scaler=d3rlpy.preprocessing.MinMaxRewardScaler(minimum=REWARD_MIN, maximum=REWARD_MAX),
-        q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
+#        q_func_factory=d3rlpy.models.q_functions.QRQFunctionFactory(n_quantiles=32),
     ).create(device=params['device'])
 
     return cql
@@ -626,8 +632,8 @@ def createBCQ(params):
     _action_flexibility = params["action_flexibility"]
     _rl_start_step = params["rl_start_step"]
 
-#    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
-    ac_encoder_factory = BweEncoder.ACEncoderFactory(64)
+    ac_encoder_factory = d3rlpy.models.encoders.VectorEncoderFactory(hidden_units=[256,256,256])
+#    ac_encoder_factory = BweEncoder.ACEncoderFactory(64)
     bcq = d3rlpy.algos.BCQConfig(
         batch_size=_batch_size,
         gamma=_gamma,

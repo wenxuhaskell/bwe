@@ -3,8 +3,8 @@
   "algorithm_name":"BCQ",
   "train_data_folder": "data",
   "test_data_folder": "testdata",
-  "train_on_max_files": 2,
-  "reward_func_name": "QOE_V1",
+  "train_on_max_files": 20,
+  "reward_func_name": "QOE_V3",
   "output_model_name": "bcqmodel",
   "log_folder_name": "BCQ",
   "update_actor_interval": 2,
@@ -25,5 +25,7 @@
   "evaluator": true,
   "tune_evaluator": "action_diff",
   "finetune": false,
-  "device": "cpu:0"
+  "device": "cpu:0",
+  "continue_training": true,
+  "model_file": ""
 }

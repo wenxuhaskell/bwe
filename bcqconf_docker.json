@@ -24,5 +24,7 @@
   "rl_start_step": 0,
   "evaluator": true,
   "tune_evaluator": "action_diff",
-  "finetune": false
+  "finetune": false,
+  "continue_training": true,
+  "model_file": ""
 }

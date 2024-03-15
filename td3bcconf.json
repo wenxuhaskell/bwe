@@ -3,8 +3,8 @@
   "algorithm_name":"TD3PLUSBC",
   "train_data_folder": "data",
   "test_data_folder": "testdata",
-  "train_on_max_files": 2,
-  "reward_func_name": "QOE_V1",
+  "train_on_max_files": 20,
+  "reward_func_name": "QOE_V3",
   "output_model_name": "td3plusbcmodel",
   "log_folder_name": "TD3PLUSBC",
   "update_actor_interval": 2,
@@ -21,6 +21,8 @@
   "actor_learning_rate": 0.01,
   "critic_learning_rate": 0.0065,
   "evaluator": true,
-  "tune_evaluator": "action_diff",
-  "finetune": false
+  "tune_evaluator": "td_error",
+  "finetune": false,
+  "continue_training": true,
+  "model_file": ""
 }

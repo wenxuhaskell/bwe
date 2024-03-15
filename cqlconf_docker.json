@@ -23,5 +23,7 @@
   "alpha_learning_rate": 0.074,
   "evaluator": true,
   "tune_evaluator": "action_diff",
-  "finetune": false
+  "finetune": false,
+  "continue_training": true,
+  "model_file": ""
 }

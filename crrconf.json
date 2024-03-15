@@ -19,5 +19,7 @@
   "actor_learning_rate": 0.0029,
   "critic_learning_rate": 0.0066,
   "evaluator": true,
-  "finetune": false
+  "finetune": false,
+  "continue_training": true,
+  "model_file": ""
 }
