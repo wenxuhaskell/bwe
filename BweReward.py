@@ -108,6 +108,7 @@ class MIType(IntEnum):
 
 # for features reduction
 qoev3_features = [0, 3, 4, 5, 7, 8, 9, 10, 13, 14]
+qoev5_features = [0, 3, 4, 5, 7, 9, 10]
 
 def get_feature(
     observation: List[float],
@@ -195,6 +196,12 @@ class RewardFunction:
                 }
             case "QOE_V4":
                 self.reward_func = reward_qoe_v4
+                self.inner_params = {
+                    "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
+                    "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
+                }
+            case "QOE_V5":
+                self.reward_func = reward_qoe_v5
                 self.inner_params = {
                     "MAX_RATE": dict(zip(MI, [0.0] * len(MI))),
                     "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
@@ -423,6 +430,13 @@ def reward_qoe_v3(observation: List[float], rf_params: Dict[str, Any],
     return final_qoe
 
 
+# using 5 long MIs and reduced features set.
+def reward_qoe_v5(observation: List[float], rf_params: Dict[str, Any],
+                  video_quality: float,
+                  audio_quality: float) -> float:
+    return reward_qoe_v3(observation, rf_params, video_quality, audio_quality)
+
+
 # reduce 5 short MIs.
 # reduce features according to the features indexes
 def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
@@ -433,6 +447,20 @@ def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
     # reduce features set according to the indexes.
     features = features[:,qoev3_features,:]
     features = np.reshape(features, [size,len(qoev3_features)*5])
+
+    return features
+
+
+# reduce 5 short MIs.
+# reduce features according to the features indexes
+def process_feature_qoev5(features: np.ndarray) -> np.ndarray:
+    size = len(features)
+    features = np.reshape(features, [size, 15, 10])
+    # remove short MIs.
+    features = features[:,:,[5,6,7,8,9]]
+    # reduce features set according to the indexes.
+    features = features[:,qoev5_features,:]
+    features = np.reshape(features, [size,len(qoev5_features)*5])
 
     return features
 

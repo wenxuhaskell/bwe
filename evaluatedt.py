@@ -11,7 +11,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, reward_qoe_v4, process_feature_qoev3, process_feature_qoev4
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, reward_qoe_v4, reward_qoe_v5, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5
 
 model_filename = ''
 data_filenames =[]
@@ -122,8 +122,8 @@ class eval_model:
             # for r3net
 #            f_rwds = [reward_r3net(o, inner_params) for (o, v, a) in zip(observations, videos, audios)]
             # for qoe_v3
-            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-            observations = process_feature_qoev3(observations)
+            f_rwds = [reward_qoe_v5(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+            observations = process_feature_qoev5(observations)
             # for qoe_v4
 #            f_rwds = np.array([reward_qoe_v4(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)])
             # exclude reward of NANs

@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 import BweEncoder
-from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3, process_feature_qoev4
+from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5
 
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
@@ -231,13 +231,14 @@ class BweDrl:
             print("Please provide a configuration file with a valid algorithm name!\n")
             return
 
-        if self._params['continue_training'] and self._params['model_file'] != '':
-            print(f'Continue training the pre-trained model')
-            pretrained_model = d3rlpy.load_learnable(self._params['model_file'], device=self._device)
-            self._algo.create_impl(pretrained_model.observation_shape, pretrained_model.action_size)
-            self._algo.copy_q_function_from(pretrained_model)
-            self._algo.copy_policy_from(pretrained_model)
-            print(f"Copy the q and policy from pretrained model{self._params['model_file']}")
+        if self._params['algorithm_name'] != "DT":
+            if self._params['continue_training'] and self._params['model_file'] != '':
+                print(f'Continue training the pre-trained model')
+                pretrained_model = d3rlpy.load_learnable(self._params['model_file'], device=self._device)
+                self._algo.create_impl(pretrained_model.observation_shape, pretrained_model.action_size)
+                self._algo.copy_q_function_from(pretrained_model)
+                self._algo.copy_policy_from(pretrained_model)
+                print(f"Copy the q and policy from pretrained model{self._params['model_file']}")
 
     # retrieve the name of algorithms
     def get_algo_name(self) -> str:
@@ -265,6 +266,8 @@ class BweDrl:
         # feature reduction if necessary.
         if self._params['reward_func_name'].upper() == 'QOE_V3':
             observations = process_feature_qoev3(observations)
+        if self._params['reward_func_name'].upper() == 'QOE_V5':
+            observations = process_feature_qoev5(observations)
         elif self._params['reward_func_name'].upper() == 'QOE_V4':
             # exclude reward of NANs
             indices = [i for i, x in enumerate(rewards) if not np.isnan(x)]
