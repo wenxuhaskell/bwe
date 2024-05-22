@@ -17,7 +17,7 @@ import BweModels
 from BweEvaluators import BweTDErrorEvaluator, BweContinuousActionDiffEvaluator, BweAverageValueEstimationEvaluator
 from BweUtils import get_device
 
-N_TRIALS = 100
+N_TRIALS = 500
 N_STARTUP_TRIALS = 5
 
 def sample_td3plusbc_params(trial: optuna.Trial) -> Dict[str, Any]:

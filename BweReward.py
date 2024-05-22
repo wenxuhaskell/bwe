@@ -424,9 +424,9 @@ def reward_qoe_v3(observation: List[float], rf_params: Dict[str, Any],
             long_qoe += w * qoes[mi]
 
     # final QoE: 0..5
-#    final_qoe = 0.0
-#    final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
-    final_qoe = 5 * long_qoe
+    final_qoe = 0.0
+    final_qoe = 0.33 * short_qoe + 0.66 * long_qoe
+    final_qoe = 5 * final_qoe
     return final_qoe
 
 
@@ -443,10 +443,10 @@ def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
     size = len(features)
     features = np.reshape(features, [size, 15, 10])
     # remove short MIs.
-    features = features[:,:,[5,6,7,8,9]]
+#    features = features[:,:,[5,6,7,8,9]]
     # reduce features set according to the indexes.
     features = features[:,qoev3_features,:]
-    features = np.reshape(features, [size,len(qoev3_features)*5])
+    features = np.reshape(features, [size,len(qoev3_features)*10])
 
     return features
 
@@ -472,4 +472,7 @@ def reward_qoe_v4(observation: List[float], rf_params: Dict[str, Any],
 
 
 def process_feature_qoev4(features: np.ndarray) -> np.ndarray:
+    return process_feature_qoev3(features)
+
+def process_feature_r3net(features: np.ndarray) -> np.ndarray:
     return process_feature_qoev3(features)

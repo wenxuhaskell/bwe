@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 from d3rlpy.models.encoders import register_encoder_factory
 
 import BweEncoder
-from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5
+from BweReward import RewardFunction, Feature, MI, MIType, get_feature_for_mi, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5, process_feature_r3net
 
 from BweUtils import load_train_data, load_multiple_files, load_train_data_from_file
 from BweLogger import BweAdapterFactory
@@ -264,9 +264,11 @@ class BweDrl:
             rewards = np.append(rewards[1:], r_last)
 
         # feature reduction if necessary.
-        if self._params['reward_func_name'].upper() == 'QOE_V3':
+        if self._params['reward_func_name'].upper() == 'R3NET':
+            observations = process_feature_r3net(observations)
+        elif self._params['reward_func_name'].upper() == 'QOE_V3':
             observations = process_feature_qoev3(observations)
-        if self._params['reward_func_name'].upper() == 'QOE_V5':
+        elif self._params['reward_func_name'].upper() == 'QOE_V5':
             observations = process_feature_qoev5(observations)
         elif self._params['reward_func_name'].upper() == 'QOE_V4':
             # exclude reward of NANs
