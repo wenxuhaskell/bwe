@@ -1,4 +1,5 @@
 import argparse
+import time
 import tkinter
 from tkinter import filedialog, Tk, Button, Label, messagebox
 from typing import Any, Dict, List
@@ -11,7 +12,7 @@ from d3rlpy.models.encoders import register_encoder_factory
 
 from BweEncoder import LSTMEncoderFactory, ACEncoderFactory
 from BweUtils import load_train_data_from_file
-from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, reward_qoe_v4, reward_qoe_v5, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5, process_feature_r3net
+from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_qoe_v2, reward_qoe_v3, reward_qoe_v4, reward_qoe_v5, process_feature_qoev3, process_feature_qoev4, process_feature_qoev5, process_feature_r3net, process_feature_qoev3_compact
 
 model_filename = ''
 data_filenames =[]
@@ -34,6 +35,14 @@ class eval_model:
         self.__show_plot = False
         self.__plot_log = False
         self.__plot_reward = False
+        self.__plot_capacity = False
+        self.__mse = 0
+        self.__pred_err_rate = 0
+        self.__over_err = 0
+        self.__mse_baseline = 0
+        self.__pred_err_rate_baseline = 0
+        self.__over_err_baseline = 0
+
 
     def run(self):
         window = Tk()
@@ -61,6 +70,8 @@ class eval_model:
 
         self.ask_show_plot()
 
+        self.ask_plot_capacity()
+
         self.eval_model()
 
         label_model.grid(column=1, row=1)
@@ -86,6 +97,40 @@ class eval_model:
 
     def ask_plot_reward(self):
         self.__plot_reward = messagebox.askyesno("Plot rewards?")
+
+    def ask_plot_capacity(self):
+        self.__plot_capacity = messagebox.askyesno("Plot true capacity?")
+
+    def calc_pred_err_rate(self, pred, bwpred):
+        p = np.squeeze(np.array(pred))
+        b = np.array(bwpred)
+        x = p - b
+        y = np.abs(x)
+        k = np.ones(len(pred))
+        y = y / b
+        z = np.minimum(k, y)
+        err_rate = np.nansum(z) / len(pred)
+        return err_rate
+
+    def calc_overestimate_err(self, pred, bwpred):
+        p = np.squeeze(np.array(pred))
+        b = np.array(bwpred)
+        x = p - b
+        y = np.zeros(len(pred))
+        x = x/b
+        z = np.maximum(y, x/b)
+        over_err = np.nansum(z) / len(pred)
+        return over_err
+
+    def calc_mse(self, pred, bwpred):
+        p = np.squeeze(np.array(pred))
+        b = np.array(bwpred)
+        x = p - b
+        y = np.square(x)
+        z = np.nansum(y)
+        mse = z / len(pred)
+        return mse
+        #mse = np.sum(np.square(np.squeeze(np.array(pred))-np.array(bwpred)))/ len(pred)
 
     def eval_model(self):
         if self.__model_filename == '':
@@ -116,14 +161,26 @@ class eval_model:
             "MAX_DELAY": dict(zip(MI, [0.0] * len(MI))),
         }
 
+        total_records = 0
+        total_inference_time = 0
+
         for filename in self.__data_filenames:
             result = load_train_data_from_file(filename)
+
+            t1 = time.process_time()
+
             observations, bw_predictions, r, t, videos, audios, capacity, lossrate = result
             # for r3net
-#            f_rwds = [reward_r3net(o, inner_params) for (o, v, a) in zip(observations, videos, audios)]
+#            f_rwds = [reward_r3net(o, inner_params) for o in observations]
             # for qoe_v3
-            f_rwds = [reward_qoe_v5(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
-            observations = process_feature_qoev5(observations)
+#            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+#            observations = process_feature_qoev3(observations)
+            # for qoe_v3 of long MIs only
+            f_rwds = [reward_qoe_v3(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+            observations = process_feature_qoev3_compact(observations)
+            # for qoe_v5
+#            f_rwds = [reward_qoe_v5(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)]
+#            observations = process_feature_qoev5(observations)
             # for qoe_v4
 #            f_rwds = np.array([reward_qoe_v4(o, inner_params, v, a) for (o, v, a) in zip(observations, videos, audios)])
             # exclude reward of NANs
@@ -141,12 +198,47 @@ class eval_model:
                 prediction = actor.predict(observation, f_reward)
                 predictions.append(prediction)
 
+            t2 = time.process_time()
+            print(f'Inference time: {t2 - t1} s')
+            total_inference_time = total_inference_time + (t2 - t1)
+            total_records = total_records + len(predictions)
+
             f_rwds = np.append(f_rwds[1:], f_rwds[-1])
 
             # plot the predictions
             x = range(len(predictions))
             predictions_scaled = [x / 1000000 for x in predictions]
             bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
+            capacity_scaled = None
+            if np.any(capacity):
+                capacity_scaled = [x / 1000000 for x in capacity]
+                mse = self.calc_mse(predictions_scaled, capacity_scaled)
+                self.__mse = self.__mse + mse
+                print("mse")
+                print(self.__mse)
+                err_rate = self.calc_pred_err_rate(predictions_scaled, capacity_scaled)
+                self.__pred_err_rate = self.__pred_err_rate + err_rate
+                print("predction error")
+                print(self.__pred_err_rate)
+                over_err = self.calc_overestimate_err(predictions_scaled, capacity_scaled)
+                self.__over_err = self.__over_err + over_err
+                print("overestimate error")
+                print(self.__over_err)
+
+                mse = self.calc_mse(bw_predictions_scaled, capacity_scaled)
+                self.__mse_baseline = self.__mse_baseline + mse
+                print(filename.split('/')[-1])
+                print("mse-baseline")
+                print(self.__mse_baseline)
+                err_rate = self.calc_pred_err_rate(bw_predictions_scaled, capacity_scaled)
+                self.__pred_err_rate_baseline = self.__pred_err_rate_baseline + err_rate
+                print("predction error-baseline")
+                print(self.__pred_err_rate_baseline)
+                over_err = self.calc_overestimate_err(bw_predictions_scaled, capacity_scaled)
+                self.__over_err_baseline = self.__over_err_baseline + over_err
+                print("overestimate error-baseline")
+                print(self.__over_err_baseline)
+
 
             algo_name = self.__model_filename.split('/')[-1].split('.')[0].replace('model', '')
             log_file_name = filename.split('/')[-1]
@@ -156,6 +248,8 @@ class eval_model:
                 plt.clf()
                 plt.plot(x, predictions_scaled, linewidth=0.8, label="estimate")
                 plt.plot(x, bw_predictions_scaled, linewidth=0.8, label="baseline")
+                if self.__plot_capacity and np.any(capacity_scaled):
+                    plt.plot(x, capacity_scaled, linewidth=0.8, label="true capacity")
                 plt.legend()
                 plt.ylabel("Bandwidth [mbps]")
                 plt.xlabel("Step")
@@ -184,6 +278,28 @@ class eval_model:
                 if self.__show_plot:
                     plt.show()
 
+        if self.__plot_capacity and np.any(capacity):
+            number_of_data_files = len(self.__data_filenames)
+            print(f'Number of data files: {number_of_data_files}')
+            print("--- Model performance ---")
+            print("MSE: ")
+            print(self.__mse/number_of_data_files)
+            print("Prediction error rate: ")
+            print(self.__pred_err_rate/number_of_data_files)
+            print("Overestimation rate: ")
+            print(self.__over_err/number_of_data_files)
+
+            print("--- Baseline performance ---")
+            print("MSE-baseline: ")
+            print(self.__mse_baseline/number_of_data_files)
+            print("Prediction error rate-baseline: ")
+            print(self.__pred_err_rate_baseline/number_of_data_files)
+            print("Overestimation rate-baseline: ")
+            print(self.__over_err_baseline/number_of_data_files)
+
+        print(f'total number of records: {total_records}')
+        print(f'total amount of inference time: {total_inference_time} s')
+        print(f'inference time per 1000 records: {total_inference_time*1000/total_records} s')
         print("Evaluation finishes!")
 
 def main() -> None:

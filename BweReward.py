@@ -437,7 +437,6 @@ def reward_qoe_v5(observation: List[float], rf_params: Dict[str, Any],
     return reward_qoe_v3(observation, rf_params, video_quality, audio_quality)
 
 
-# reduce 5 short MIs.
 # reduce features according to the features indexes
 def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
     size = len(features)
@@ -447,6 +446,20 @@ def process_feature_qoev3(features: np.ndarray) -> np.ndarray:
     # reduce features set according to the indexes.
     features = features[:,qoev3_features,:]
     features = np.reshape(features, [size,len(qoev3_features)*10])
+
+    return features
+
+
+# reduce 5 short MIs.
+# reduce features according to the features indexes
+def process_feature_qoev3_compact(features: np.ndarray) -> np.ndarray:
+    size = len(features)
+    features = np.reshape(features, [size, 15, 10])
+    # remove short MIs.
+    features = features[:,:,[5,6,7,8,9]]
+    # reduce features set according to the indexes.
+    features = features[:,qoev3_features,:]
+    features = np.reshape(features, [size,len(qoev3_features)*5])
 
     return features
 
