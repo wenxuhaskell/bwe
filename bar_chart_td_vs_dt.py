@@ -1,3 +1,13 @@
+# This is duplicated to bar_chart_evaluation_results_all.py. (predecessor)
+# Usage
+# This script is to draw a bar chart of evaluation results of multiple models
+# The evaluation results are hardcoded in
+# models_all: list of model names to be included in the bar chart
+#  mse_all: list of MSEs, in the same order as in models_all
+#  pred_err_all: list of prediction errors, in the same order as in models_all
+#  overest_err_all: list overestimation errors, in the same order as in models_all
+#
+
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -9,7 +19,7 @@ plt.rcParams['figure.figsize'] = (5,3)
 models_all = ['TD3+BC', 'DT', 'Baseline']
 
 
-# evaluation results for td_runed TD3+BC, DT (2 heads 4 layers) and baseline
+# evaluation results for td_tuned TD3+BC, DT (2 heads 4 layers) and baseline
 mse_all         = [0.79, 0.75, 0.72]
 pred_err_all  = [0.40, 0.19, 0.13]
 overest_err_all = [0.30, 0.27, 0.02]

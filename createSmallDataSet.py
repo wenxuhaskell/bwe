@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from BweReward import RewardFunction, Feature, MI, remaining_features, process_feature_qoev3
+from BweReward import RewardFunction, Feature, MI, process_feature_qoev3
 from BweUtils import load_train_data, load_data
 
 from sklearn.decomposition import PCA
@@ -156,11 +156,11 @@ def main() -> None:
                     observations_file = process_feature_average(observations_file)
                 elif args.algo.upper() == 'RUC':
                     # reduced set of features, 15->10
-                    observations_file = process_feature_reduction(observations_file, remaining_features)
+                    observations_file = process_feature_reduction(observations_file)
                 elif args.algo.upper() == 'RUC_LMI':
                     # reduce the set of features: 15->10 and keep 5 long MIs only
                     # for QOE_V3 only
-                    observations_file = process_feature_qoev3(observations_file, remaining_features)
+                    observations_file = process_feature_qoev3(observations_file)
 
                 # save all data from the single data log file
                 observations.append(observations_file)

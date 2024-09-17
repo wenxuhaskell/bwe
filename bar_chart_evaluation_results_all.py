@@ -1,3 +1,12 @@
+# Usage
+# This script is to draw a bar chart of evaluation results of multiple models
+# The evaluation results are hardcoded in
+# models_all: list of model names to be included in the bar chart
+#  mse_all: list of MSEs, in the same order as in models_all
+#  pred_err_all: list of prediction errors, in the same order as in models_all
+#  overest_err_all: list overestimation errors, in the same order as in models_all
+#
+
 from matplotlib import pyplot as plt
 import numpy as np
 

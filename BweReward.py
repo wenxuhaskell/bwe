@@ -366,7 +366,7 @@ def reward_qoe_v2(observation: List[float],
     return final_qoe
 
 
-# using 5 long MIs and reduced features set.
+# using 5 long MIs.
 def reward_qoe_v3(observation: List[float], rf_params: Dict[str, Any],
                   video_quality: float,
                   audio_quality: float) -> float:

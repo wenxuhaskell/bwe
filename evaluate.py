@@ -2,7 +2,7 @@ import argparse
 import time
 
 import pandas as pd
-import tkinter
+import tkinter as tk
 from tkinter import filedialog, Tk, Button, Label, messagebox
 from typing import Any, Dict, List
 import d3rlpy
@@ -19,52 +19,6 @@ from BweReward import Feature, MI, MIType, reward_qoe_v1, reward_r3net, reward_q
 
 model_filename = ''
 data_filenames =[]
-
-# short-term MI
-def smi_features(feature_vec: List[float]) -> float:
-    # use the 5 recent short MIs. (TODO: refinement)
-    receive_rate = np.sum(feature_vec[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
-    queuing_delay = np.sum(feature_vec[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
-    pkt_loss_rate = np.sum(feature_vec[(Feature.PKT_LOSS_RATIO - 1) * 10 : (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
-
-    return 0.6 * np.log(4 * receive_rate + 1) - queuing_delay / 1000 - 10 * pkt_loss_rate
-
-# long-term MI
-def lmi_features(feature_vec: List[float]) -> float:
-    # use the 5 recent short MIs. (TODO: refinement)
-    receive_rate = np.sum(feature_vec[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
-    queuing_delay = np.sum(feature_vec[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
-    pkt_loss_rate = np.sum(feature_vec[(Feature.PKT_LOSS_RATIO - 1) * 10 : (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
-
-    return 0.6 * np.log(4 * receive_rate + 1) - queuing_delay / 1000 - 10 * pkt_loss_rate
-
-
-def rewards_bwe(observation: List[float], rf_params: Dict[str, Any]=None) -> float:
-    # use the 5 recent short MIs.
-    # to adward
-    video_pkt_prob = np.sum(observation[(Feature.VIDEO_PKT_PROB - 1) * 10: (Feature.VIDEO_PKT_PROB - 1) * 10 + 5]) / 5
-    receive_rate = np.sum(observation[(Feature.RECV_RATE - 1) * 10 : (Feature.RECV_RATE - 1) * 10 + 5]) / 5
-
-    award = (0.5*video_pkt_prob + 0.5*receive_rate)
-
-    # to punish
-    audio_pkt_prob = np.sum(observation[(Feature.AUDIO_PKT_PROB - 1) * 10 : (Feature.AUDIO_PKT_PROB - 1) * 10 + 5]) / 5
-    pkt_interarrival = np.sum(observation[(Feature.PKT_INTERARRIVAL - 1) * 10 : (Feature.PKT_INTERARRIVAL - 1) * 10 + 5]) / 5
-    pkt_jitter = np.sum(observation[(Feature.PKT_JITTER - 1) * 10 : (Feature.PKT_JITTER - 1) * 10 + 5]) / 5
-    pkt_loss_rate = np.sum(observation[(Feature.PKT_LOSS_RATIO - 1) * 10: (Feature.PKT_LOSS_RATIO - 1) * 10 + 5]) / 5
-    queuing_delay = np.sum(observation[(Feature.QUEUING_DELAY - 1) * 10 : (Feature.QUEUING_DELAY - 1) * 10 + 5]) / 5
-
-    fine = (0.35*audio_pkt_prob + 0.35*pkt_interarrival + 0.1*pkt_jitter + 0.1*pkt_loss_rate + 0.1*queuing_delay)
-
-    return (award - 0.8*fine + 0.2)*5
-
-
-def get_feature_by_index(
-    observation: List[float],
-    feature_index: Feature,
-    mi: MI = MI.LONG_600,
-) -> float:
-    return observation[(feature_index - 1) * 10 + mi - 1]
 
 
 class eval_model:
@@ -110,10 +64,10 @@ class eval_model:
 
         self.ask_plot_capacity()
 
-        self.eval_model()
-
         label_model.grid(column=1, row=1)
         label_data.grid(column=1, row=2)
+
+        self.eval_model()
         window.mainloop()
 
     def select_model_file(self):
@@ -138,38 +92,6 @@ class eval_model:
 
     def ask_plot_capacity(self):
         self.__plot_capacity = messagebox.askyesno("Plot true capacity?")
-
-    def calc_action_diff(self, pred, bwpred):
-        # percentiles:
-        # up1 - 95%, low1 - 5%
-        # up2 - 90%, low2 - 10%
-        # up3 - 85%, low3 - 15%
-        # up4 - 80%, low4 - 20%
-        # up5 - 75%, low5 - 25%
-        per_index = [95,90,85,80,75,70,65,60,55,50,45,40,35,30,25,20,15,10,5]
-        self.__pred_per = np.round(np.percentile(pred, per_index)/1000, 1)
-        self.__bwpred_per = np.round(np.percentile(bwpred, per_index)/1000, 1)
-
-        self.__diff_per = self.__pred_per - self.__bwpred_per
-
-        row_index = ['95%', '90%', '85%', '80%', '75%', '70%', '65%', '60%', '55%', '50%', '45%', '40%', '35%', '30%', '25%', '20%', '15%', '10%', '5%']
-
-        self.__diffs = (pred - bwpred)/1000
-
-        data = {
-            'Model': self.__pred_per,
-            'Baseline': self.__bwpred_per,
-            'Diff': self.__diff_per
-        }
-
-        df = pd.DataFrame(data, row_index)
-
-        print('Percentiles in kbps \n')
-        print(df)
-
-        print("Average difference [unit: kbps] \n    ")
-        ave = np.sum(self.__diffs)/len(self.__diffs)
-        print(ave)
 
     def calc_pred_err_rate(self, pred, bwpred):
         p = np.squeeze(np.array(pred))
@@ -278,7 +200,6 @@ class eval_model:
 
             # plot the predictions
             x = range(len(predictions))
-#            self.calc_action_diff(predictions, bw_predictions)
             predictions_scaled = [x / 1000000 for x in predictions]
             bw_predictions_scaled = [x / 1000000 for x in bw_predictions]
             capacity_scaled = None
